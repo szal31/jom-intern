@@ -1,6 +1,6 @@
-# Hallmark · redesign: full · scope: app · shape: app screen · theme: coral (dealt 3/3, seed sign-in-tool-where-university-3955·4b5faeba·2026-11-12·r0) · palette, faces and radius only
-# critique: warm paper and dark ink so the documents lead; ink marks the primary action and selection, nothing else is coloured
-# answered 48: Streamlit has no :root, so this theme block is the token set; borderColor darkened from Coral's rule (1.7:1) to #8A817C (3.3:1 on input fill) for field edges
+# Hallmark · redesign: full · scope: app · shape: app screen · theme: werkstatt (dealt 2/3, seed jom-intern-malaysian-university-d719·4b5faeba·2026-11-12·r0) · werkstatt: putty · palette, faces, rules and radius
+# critique: a printed prospectus pinned to the faculty wall; capitals and boxed cells carry the voice, the three primaries code application status only
+# answered 48: Streamlit has no :root here, so this block is the token set for widgets; assets/jom.css declares the same tokens at :root for everything else
 
 [browser]
 gatherUsageStats = false
@@ -10,18 +10,25 @@ toolbarMode = "viewer"
 
 [theme]
 base = "light"
-primaryColor = "#1D1614"
-backgroundColor = "#F8F4F1"
-secondaryBackgroundColor = "#F1ECE8"
-textColor = "#1D1614"
-linkColor = "#1D1614"
-borderColor = "#8A817C"
+primaryColor = "#14110E"
+backgroundColor = "#D2C9B9"
+secondaryBackgroundColor = "#E2DCCF"
+textColor = "#14110E"
+linkColor = "#14110E"
+borderColor = "#14110E"
 showWidgetBorder = true
-baseRadius = "8px"
-font = "'General Sans':https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap, sans-serif"
-codeFont = "'Geist Mono':https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&display=swap, monospace"
-headingFontWeights = [600, 600, 600, 600, 600, 600]
+baseRadius = "none"
+buttonRadius = "none"
+baseFontSize = 16
+font = "Karla:https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&display=swap, sans-serif"
+headingFont = "Jost:https://fonts.googleapis.com/css2?family=Jost:wght@700&display=swap, Futura, sans-serif"
+headingFontWeights = [700, 700, 700, 700, 700, 700]
+codeFont = "monospace"
+blueColor = "#1949C5"
+redColor = "#B71C07"
+yellowColor = "#F4C929"
+dataframeHeaderBackgroundColor = "#C6BBA8"
 
 [theme.sidebar]
-backgroundColor = "#F1ECE8"
-secondaryBackgroundColor = "#E8E1DD"
+backgroundColor = "#C6BBA8"
+secondaryBackgroundColor = "#E2DCCF"

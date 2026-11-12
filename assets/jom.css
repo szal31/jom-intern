@@ -1,0 +1,67 @@
+/* Hallmark · redesign: full · scope: app · shape: app screen · theme: werkstatt (dealt 2/3) · werkstatt: putty · signature: the pack as a ruled entry, status coded in the primaries */
+/* critique: a faculty prospectus; heads in Jost capitals, facts boxed in 3px ink cells, blue applied, yellow interview, red offer, nothing else coloured */
+/* answered 34: Streamlit owns html and body; overflow-x clip set on both below */
+/* shortcut: selectors use Streamlit data-testid and st-key classes, which can change between Streamlit releases; recheck after upgrading */
+
+:root {
+  --color-paper: #D2C9B9; --color-paper-2: #C6BBA8; --color-paper-3: #E2DCCF;
+  --color-ink: #14110E; --color-ink-2: #2A2522; --color-muted: #4B433E; --color-rule: #83786C;
+  --color-accent: #1949C5; --color-accent-2-deep: #B71C07; --color-accent-3: #F4C929; --color-accent-ink: #F6F1E9;
+  --color-focus: #1949C5;
+  --font-display: "Jost", "Futura", sans-serif; --font-body: "Karla", ui-sans-serif, system-ui, sans-serif;
+  --rule-hair: 1px; --rule-bar: 2px; --rule-box: 3px;
+}
+
+html, body { overflow-x: clip; }
+
+/* Heads: capitals are the material */
+h1, h2, h3, h4 { text-transform: uppercase; letter-spacing: -0.005em; line-height: 1.02; overflow-wrap: break-word; min-width: 0; font-family: var(--font-display); }
+h1 { font-size: clamp(2.25rem, 5vw, 3.5rem) !important; }
+
+/* Controls: square, ink-ruled, Karla capitals */
+[data-testid^="stBaseButton"] { border: var(--rule-bar) solid var(--color-ink) !important; border-radius: 0 !important; text-transform: uppercase; font-weight: 600; letter-spacing: 0; min-height: 2.5rem; font-family: var(--font-body); }
+[data-testid="stBaseButton-headerNoPadding"] { border: 0 !important; }
+[data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div, [data-testid="stFileUploaderDropzone"] { border: var(--rule-bar) solid var(--color-ink) !important; border-radius: 0 !important; }
+[data-baseweb="tab-list"] { border-bottom: var(--rule-bar) solid var(--color-ink); gap: 1.5rem; }
+[data-baseweb="tab"] { font-weight: 600; }
+
+/* Boxes: a cell is what the rules enclose */
+[data-testid="stExpander"] details { border: var(--rule-box) solid var(--color-ink) !important; border-radius: 0 !important; background: transparent; }
+[data-testid="stExpander"] summary { font-weight: 600; }
+[data-testid="stForm"], .st-key-uploadbox { border: var(--rule-box) solid var(--color-ink) !important; border-radius: 0 !important; }
+[data-testid="stSidebar"] { border-right: var(--rule-box) solid var(--color-ink); }
+[data-testid="stProgress"] > div > div { border-radius: 0 !important; }
+
+/* Figures in boxed cells */
+.jom-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rule-box); background: var(--color-ink); border: var(--rule-box) solid var(--color-ink); margin: 0 0 1.5rem; }
+.jom-cell { padding: 0.75rem 1rem 0.875rem; background: var(--color-paper); min-width: 0; }
+@media (max-width: 40rem) { .jom-cells { grid-template-columns: minmax(0, 1fr); } .jom-cell b { font-size: 1.75rem; } }
+.jom-cell b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 2.25rem; line-height: 1; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.jom-cell span { display: block; margin-top: 0.375rem; font-weight: 600; font-size: 0.9375rem; color: var(--color-muted); }
+
+/* Status: each primary codes one stage, the same one everywhere */
+.jom-status { display: inline-block; padding: 0.125rem 0.625rem; border: var(--rule-bar) solid var(--color-ink); font-weight: 600; font-size: 0.875rem; text-transform: uppercase; }
+.jom-status--applied { background: var(--color-accent); color: var(--color-accent-ink); }
+.jom-status--interview { background: var(--color-accent-3); color: var(--color-ink); }
+.jom-status--offer { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
+.jom-status--rejected { background: var(--color-paper-2); color: var(--color-ink); }
+.jom-status--ready { background: transparent; color: var(--color-ink); }
+.jom-meta { color: var(--color-muted); font-size: 0.9375rem; margin-left: 0.5rem; }
+
+/* Focus appears instantly, in the focus blue */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [role="tab"]:focus-visible, [role="radio"]:focus-visible, summary:focus-visible { outline: 3px solid var(--color-focus) !important; outline-offset: 2px; transition: none !important; }
+
+/* Links: a 2px ink underline that thickens on hover, the only motion */
+a { text-decoration-thickness: 2px; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* The one blue field: the sign-in masthead */
+.jom-band { background: var(--color-accent); color: var(--color-accent-ink); border: var(--rule-box) solid var(--color-ink); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 4vw, 2.5rem); margin-bottom: 0; }
+.jom-band h1 { color: var(--color-accent-ink); margin: 0 0 0.75rem; padding: 0; font-size: clamp(2.75rem, 8vw, 4.5rem) !important; }
+.jom-band p { margin: 0; font-size: 1.125rem; max-width: 36ch; }
+[data-baseweb="tab-highlight"] { background-color: var(--color-ink) !important; height: var(--rule-bar) !important; }
+[data-baseweb="tab-border"] { background-color: var(--color-ink) !important; height: var(--rule-bar) !important; }

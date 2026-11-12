@@ -1,4 +1,4 @@
-# Internship Pack
+# Jom Intern!
 
 A Streamlit app that turns a student's resume into a tailored, checked resume and cover letter for each internship, with a personal tracker. Pilot for up to 10 students.
 

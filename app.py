@@ -1,6 +1,8 @@
-"""Internship Pack: a tailored, checked resume and cover letter for each internship."""
+"""Jom Intern!: a tailored, checked resume and cover letter for each internship."""
+import html
 import json
 import os
+from pathlib import Path
 from datetime import date
 
 import streamlit as st
@@ -24,7 +26,8 @@ PRIVACY = """**Before you start**
 - Your details are sent to Google's Gemini AI to write your documents. On the free tier, Google may use what's sent to improve its products.
 - You can delete everything, including your account, at any time from **My account**."""
 
-st.set_page_config(page_title="Internship Pack", page_icon=":material/description:")
+st.set_page_config(page_title="Jom Intern!", page_icon=":material/work:")
+st.html(f"<style>{(Path(__file__).parent / 'assets' / 'jom.css').read_text(encoding='utf-8')}</style>")
 
 try:
     secrets = dict(st.secrets)
@@ -52,6 +55,12 @@ def is_admin(email):
     return (email or "").casefold() == os.environ["ADMIN_EMAIL"].casefold()
 
 
+def status_tag(status):
+    """Blue applied, yellow interview, red offer: the primaries code the stage and nothing else."""
+    kind = status.lower() if status in STATUSES else "ready"
+    return f'<span class="jom-status jom-status--{kind}">{html.escape(status)}</span>'
+
+
 def go_to(page):
     """Button callback: switch the sidebar page before it's drawn."""
     state.page = page
@@ -67,8 +76,14 @@ def profile_steps(profile):
 
 
 def login_page():
-    st.title("Internship Pack")
-    st.write("Turn your resume into a tailored resume and cover letter for each internship.")
+    st.html('''<div class="jom-band"><h1>Jom Intern!</h1>
+      <p>Turn your resume into a tailored resume and cover letter for each internship.</p></div>''')
+    seats = db.seats_left(state.db)
+    st.html(f'''<div class="jom-cells">
+      <div class="jom-cell"><b>{seats}</b><span>places left in the pilot</span></div>
+      <div class="jom-cell"><b>{db.PACK_LIMIT_PER_DAY}</b><span>packs a day</span></div>
+      <div class="jom-cell"><b>1 page</b><span>resume, plus a cover letter</span></div>
+    </div>''')
     log_in, sign_up = st.tabs(["Log in", "Sign up"])
     with log_in, st.form("login"):
         email, password = st.text_input("Email"), st.text_input("Password", type="password")
@@ -79,7 +94,6 @@ def login_page():
             except Exception as error:
                 st.error(db.friendly_error(error))
     with sign_up:
-        seats = db.seats_left(state.db)
         if seats == 0:
             st.info("The pilot is full.")
             return
@@ -132,7 +146,7 @@ def profile_page():
     st.progress(done / len(steps), text=f"Profile {done} of {len(steps)} done")
     if done < len(steps):
         st.caption("Still to fill in: " + ", ".join(name for name, ok in steps if not ok))
-    with st.container(border=True):
+    with st.container(key="uploadbox"):
         upload = st.file_uploader("Upload your current resume (PDF or Word) to fill this in", type=["pdf", "docx"])
         st.caption("Reading a resume replaces the sections it contains. Your stories, internship window and any field the resume leaves out are kept.")
         read = upload and st.button("Read my resume")
@@ -253,7 +267,7 @@ def packs_page(profile):
     for row in packs:
         flag = " (needs fixes)" if row.get("problems") else ""
         with st.expander(f"**{row['company']}**: {row['role']}{flag}"):
-            st.caption(f"{row['status']}, made {row['created_at'][:10]}")
+            st.html(f"{status_tag(row['status'])}<span class='jom-meta'>made {html.escape(row['created_at'][:10])}</span>")
             files = row.get("files") or {}
             for problem in row.get("problems") or []:
                 st.warning(problem)
@@ -296,7 +310,7 @@ def tracker_page():
         st.button("Find an internship", on_click=go_to, args=("Internships",), type="primary", key="tracker_empty")
         return
     st.dataframe([{k: p.get(k) for k in ("company", "role", "status", "notes", "link")} | {"made": p["created_at"][:10]} for p in packs], use_container_width=True)
-    st.download_button("Download as Excel", tracker_xlsx(packs), file_name="internship_tracker.xlsx")
+    st.download_button("Download as Excel", tracker_xlsx(packs), file_name="jom_intern_tracker.xlsx")
 
 
 def account_page():
@@ -364,7 +378,7 @@ if state.get("profile_user") != state.user.id:  # working copy for the profile p
     state.profile, state.profile_version, state.profile_user = json.loads(json.dumps(profile)), 0, state.user.id
 pages = ["My profile", "Internships", "My packs", "Tracker", "My account"] + (["Admin"] if is_admin(state.user.email) else [])
 ICONS = {"My profile": "person", "Internships": "work", "My packs": "folder_open", "Tracker": "table_chart", "My account": "manage_accounts", "Admin": "admin_panel_settings"}
-st.sidebar.markdown("### Internship Pack")
+st.sidebar.markdown("### Jom Intern!")
 st.sidebar.caption(f"Signed in as {state.user.email}")
 page = st.sidebar.radio("Go to", pages, key="page", format_func=lambda p: f":material/{ICONS[p]}: {p}", label_visibility="collapsed")
 if st.sidebar.button("Log out"):
