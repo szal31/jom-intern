@@ -1,8 +1,10 @@
 """Write a tailored resume and cover letter from a student's own profile."""
 import json
+import re
 
 from core.checker import check_pack
 from core.llm import ask_json
+from core.profile import clean_items, clean_lines
 
 STYLE = (
     "Write in plain, formal English. No adverbs, no em dashes, active voice with the student as the subject, "
@@ -23,11 +25,20 @@ def write_pack(profile: dict, job: dict, llm=None, problems=None) -> dict:
         "Titles must be copied exactly from the profile. The letter must name the company and the exact role."
         f"{fix}\n\nPROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\nJOB:\n{json.dumps(job, ensure_ascii=False)}"
     )
-    result = ask_json(prompt, llm=llm)
-    resume = result.get("resume") or {}
+    return clean_pack(ask_json(prompt, llm=llm))
+
+
+def clean_pack(raw: dict) -> dict:
+    """Coerce the model's reply into the pack shape, dropping anything malformed."""
+    resume = raw.get("resume") if isinstance(raw.get("resume"), dict) else {}
+    summary = resume.get("summary")
     return {
-        "resume": {key: resume.get(key) or ([] if key != "summary" else "") for key in ("summary", "skills", "experience", "projects", "leadership")},
-        "letter": [p for p in result.get("letter") or [] if isinstance(p, str) and p.strip()],
+        "resume": {
+            "summary": summary if isinstance(summary, str) else "",
+            "skills": clean_lines(resume.get("skills")),
+            **{section: [i for i in clean_items(resume.get(section)) if i.get("title")] for section in ("experience", "projects", "leadership")},
+        },
+        "letter": clean_lines(raw.get("letter")),
     }
 
 
@@ -41,30 +52,42 @@ def verify_pack(pack: dict, profile: dict, llm=None) -> list[str]:
     return [s for s in ask_json(prompt, llm=llm).get("untraceable", []) if isinstance(s, str) and s.strip()]
 
 
-def _drop(pack: dict, flagged: list[str]) -> dict:
-    flagged = [f.strip() for f in flagged]
+def _norm(text: str) -> str:
+    return " ".join(re.sub(r"[^\w\s]", " ", text).casefold().split())
+
+
+def _drop(pack: dict, flagged: list[str]) -> tuple[dict, list[str]]:
+    """Remove flagged lines, matching loosely; return the flags that matched nothing."""
+    targets = {_norm(f): f for f in flagged if _norm(f)}
+    found = set()
+
+    def hit(text):
+        match = next((t for t in targets if t == _norm(text) or (len(t) > 15 and t in _norm(text))), None)
+        if match:
+            found.add(match)
+        return match
+
     resume = pack["resume"]
     for section in ("experience", "projects", "leadership"):
         for item in resume.get(section, []):
-            item["bullets"] = [b for b in item.get("bullets", []) if b.strip() not in flagged]
-    if resume.get("summary", "").strip() in flagged:
+            item["bullets"] = [b for b in item.get("bullets", []) if not hit(b)]
+    if resume.get("summary") and hit(resume["summary"]):
         resume["summary"] = ""
     letter = []
     for paragraph in pack["letter"]:
-        for sentence in flagged:
-            paragraph = paragraph.replace(sentence, "").strip()
-        if paragraph:
-            letter.append(" ".join(paragraph.split()))
+        kept = " ".join(s for s in re.split(r"(?<=[.!?])\s+", paragraph) if not hit(s))
+        if kept.strip():
+            letter.append(kept)
     pack["letter"] = letter
-    return pack
+    return pack, [targets[t] for t in targets if t not in found]
 
 
 def build_pack(profile: dict, job: dict, other_companies: list[str], llm=None) -> tuple[dict, list[str]]:
     problems = None
     for _attempt in range(2):
         pack = write_pack(profile, job, llm=llm, problems=problems)
-        pack = _drop(pack, verify_pack(pack, profile, llm=llm))
-        problems = check_pack(pack, profile, job, other_companies)
+        pack, missed = _drop(pack, verify_pack(pack, profile, llm=llm))
+        problems = check_pack(pack, profile, job, other_companies) + [f"A flagged line couldn't be removed: {m}" for m in missed]
         if not problems:
             return pack, []
     return pack, problems

@@ -10,7 +10,7 @@ from core.checker import check_pack
 from core.jobs import load_jobs, recommend
 from core.llm import LLMError
 from core.pack import build_pack, trim_to_one_page
-from core.profile import empty_profile, extract_profile
+from core.profile import empty_profile, extract_profile, merge_profile
 from core.render import letter_docx, letter_pdf, resume_docx, resume_pdf
 from core.resume_text import read_resume
 from core.tracker import tracker_xlsx
@@ -20,7 +20,7 @@ STATUSES = ["Ready", "Applied", "Interview", "Rejected", "Offer"]
 PRIVACY = """**Before you start**
 - This is a pilot for up to 10 students, run by Sanad.
 - Your profile, the resumes and letters you make, and your tracker are stored in a private database. Only you can see them in the app.
-- As the database owner, Sanad can technically read the data. He will only look at yours if you ask him for help.
+- As the database owner, Sanad can technically read the data, and will only look at yours if you ask for help.
 - Your details are sent to Google's Gemini AI to write your documents. On the free tier, Google may use what's sent to improve its products.
 - You can delete everything, including your account, at any time from **My account**."""
 
@@ -46,6 +46,10 @@ state = st.session_state
 if "db" not in state:
     state.db = db.client()
     state.user = None
+
+
+def is_admin(email):
+    return (email or "").casefold() == os.environ["ADMIN_EMAIL"].casefold()
 
 
 def login_page():
@@ -87,26 +91,30 @@ def consent_page(record):
         st.rerun()
 
 
-def edit_items(label, items, fields, key):
-    """Edit a list of entries; bullets are one per line."""
+def edit_items(label, section, fields, key, changes):
+    """Edit a list of entries in the working profile; bullets are one per line. Add/remove go to `changes`."""
     st.subheader(label)
-    result = []
+    v, bulleted = state.profile_version, key in ("exp", "proj", "lead")
+    items = state.profile.get(section) or []
     for i, item in enumerate(items):
         with st.expander(item.get(fields[0]) or f"{label} {i + 1}", expanded=not item.get(fields[0])):
-            entry = {f: st.text_input(f.title(), item.get(f, ""), key=f"{key}{i}{f}") for f in fields}
-            if "bullets" in item or key in ("exp", "proj", "lead"):
-                entry["bullets"] = [b for b in st.text_area("Bullets (one per line)", "\n".join(item.get("bullets", [])), key=f"{key}{i}b").splitlines() if b.strip()]
-            if not st.checkbox("Remove", key=f"{key}{i}rm"):
-                result.append(entry)
-    if st.button(f"Add {label.lower()}", key=f"{key}add"):
-        result.append({f: "" for f in fields} | ({"bullets": []} if key in ("exp", "proj", "lead") else {}))
-    return result
+            for f in fields:
+                item[f] = st.text_input(f.title(), item.get(f, ""), key=f"{key}{v}_{i}{f}")
+            if bulleted:
+                item["bullets"] = [b for b in st.text_area("Bullets (one per line)", "\n".join(item.get("bullets", [])), key=f"{key}{v}_{i}b").splitlines() if b.strip()]
+            if st.button("Remove", key=f"{key}{v}_{i}rm"):
+                changes.append(lambda i=i: items.pop(i))
+    state.profile[section] = items
+    if st.button(f"Add {label.lower()}", key=f"{key}{v}add"):
+        changes.append(lambda: items.append({f: "" for f in fields} | ({"bullets": []} if bulleted else {})))
 
 
-def profile_page(profile):
+def profile_page():
+    profile, v, changes = state.profile, state.profile_version, []
     st.title("My profile")
     st.caption("Everything in your resume and letters comes from here. Nothing else is added.")
     upload = st.file_uploader("Upload your current resume (PDF or Word) to fill this in", type=["pdf", "docx"])
+    st.caption("Reading a resume replaces the sections it contains. Your stories, internship window and any field the resume leaves out are kept.")
     if upload and st.button("Read my resume"):
         try:
             text = read_resume(upload.getvalue(), upload.name)
@@ -114,33 +122,40 @@ def profile_page(profile):
                 st.warning("Couldn't read any text from that file. It may be a scanned image. Please fill in the sections below.")
             else:
                 with st.spinner("Reading your resume..."):
-                    profile = extract_profile(text, llm=LLM)
-                db.save_profile(state.db, state.user.id, profile)
+                    state.profile = merge_profile(profile, extract_profile(text, llm=LLM))
+                db.save_profile(state.db, state.user.id, state.profile)
+                state.profile_version += 1
                 st.rerun()
         except (ValueError, LLMError) as error:
             st.error(str(error))
     contact = profile.get("contact") or {}
     st.subheader("Contact")
-    profile["contact"] = {f: st.text_input(f.title(), contact.get(f, ""), key=f"c{f}") for f in ("name", "location", "phone", "email", "linkedin", "github")}
-    profile["summary"] = st.text_area("A line about you (optional)", profile.get("summary", ""))
-    profile["education"] = edit_items("Education", profile.get("education", []), ["institution", "qualification", "dates", "grade"], "edu")
-    profile["experience"] = edit_items("Experience", profile.get("experience", []), ["title", "dates"], "exp")
-    profile["projects"] = edit_items("Projects", profile.get("projects", []), ["title", "dates", "tools"], "proj")
-    profile["leadership"] = edit_items("Leadership & activities", profile.get("leadership", []), ["title", "dates"], "lead")
+    profile["contact"] = {f: st.text_input(f.title(), contact.get(f, ""), key=f"c{v}{f}") for f in ("name", "location", "phone", "email", "linkedin", "github")}
+    profile["summary"] = st.text_area("A line about you (optional)", profile.get("summary", ""), key=f"sum{v}")
+    edit_items("Education", "education", ["institution", "qualification", "dates", "grade"], "edu", changes)
+    edit_items("Experience", "experience", ["title", "dates"], "exp", changes)
+    edit_items("Projects", "projects", ["title", "dates", "tools"], "proj", changes)
+    edit_items("Leadership & activities", "leadership", ["title", "dates"], "lead", changes)
     st.subheader("Skills and languages")
-    profile["skills"] = [s for s in st.text_area("Skills, one group per line (e.g. Analytics: Power BI, Excel)", "\n".join(profile.get("skills", []))).splitlines() if s.strip()]
-    profile["languages"] = [s for s in st.text_area("Languages, one per line", "\n".join(profile.get("languages", []))).splitlines() if s.strip()]
+    profile["skills"] = [s for s in st.text_area("Skills, one group per line (e.g. Analytics: Power BI, Excel)", "\n".join(profile.get("skills", [])), key=f"sk{v}").splitlines() if s.strip()]
+    profile["languages"] = [s for s in st.text_area("Languages, one per line", "\n".join(profile.get("languages", [])), key=f"lang{v}").splitlines() if s.strip()]
     st.subheader("Your stories")
     st.caption("3 to 5 real experiences for cover letters: a challenge, what you did, what happened.")
-    profile["stories"] = edit_items("Story", profile.get("stories", []), ["situation", "action", "result"], "story")
+    edit_items("Story", "stories", ["situation", "action", "result"], "story", changes)
     window = profile.get("window") or {}
     st.subheader("Internship window")
     profile["window"] = {
-        "start": st.text_input("Start date (e.g. 15 March 2027)", window.get("start", "")),
-        "end": st.text_input("End date (e.g. 4 July 2027)", window.get("end", "")),
-        "weeks": st.text_input("Length in weeks (e.g. 14 to 16)", window.get("weeks", "")),
-        "locations": st.text_input("Locations, comma separated (e.g. Kuala Lumpur, Selangor)", window.get("locations", "")),
+        "start": st.text_input("Start date (e.g. 15 March 2027)", window.get("start", ""), key=f"ws{v}"),
+        "end": st.text_input("End date (e.g. 4 July 2027)", window.get("end", ""), key=f"we{v}"),
+        "weeks": st.text_input("Length in weeks (e.g. 14 to 16)", window.get("weeks", ""), key=f"ww{v}"),
+        "locations": st.text_input("Locations, comma separated (e.g. Kuala Lumpur, Selangor)", window.get("locations", ""), key=f"wl{v}"),
     }
+    if changes:  # applied after every field is read, so nothing typed is lost; new keys stop stale widget values
+        for change in changes:
+            change()
+        state.profile_version += 1
+        st.rerun()
+    st.caption("Adding or removing an entry doesn't save. Press Save profile when you're done.")
     if st.button("Save profile", type="primary"):
         db.save_profile(state.db, state.user.id, profile)
         st.success("Saved.")
@@ -158,13 +173,17 @@ def make_pack(profile, job):
             files = {"resume.pdf": resume_pdf(profile, pack)[0], "resume.docx": resume_docx(profile, pack),
                      "letter.pdf": letter_pdf(profile, job, pack), "letter.docx": letter_docx(profile, job, pack),
                      "pack.json": json.dumps({"pack": pack, "job": job}).encode()}
-            db.save_pack(state.db, state.user.id, {"company": job["company"], "role": job["role"], "link": job.get("link", "")}, files)
+            db.save_pack(state.db, state.user.id, {"company": job["company"], "role": job["role"], "link": job.get("link", ""), "problems": problems}, files)
     except LLMError as error:
-        db.log_event(state.db, "llm_error", str(error))
+        db.log_event(state.db, "llm_error", str(error)[:200])
         st.error(f"{error} Nothing was saved, and this didn't count towards today's limit.")
         return
+    except Exception as error:
+        db.log_event(state.db, "pack_error", type(error).__name__)
+        st.error("Something went wrong making this pack. Please try again in a minute.")
+        return
     if problems:
-        db.log_event(state.db, "checker", "; ".join(problems))
+        db.log_event(state.db, "checker", f"{len(problems)} problems")  # counts only: problems quote the student's text
         st.warning("Saved, but please fix these before using it (My packs → Edit):\n- " + "\n- ".join(problems))
     else:
         st.success("Done. Find it under My packs.")
@@ -204,26 +223,36 @@ def packs_page(profile):
     for row in packs:
         with st.expander(f"{row['company']}: {row['role']} ({row['created_at'][:10]})"):
             files = row.get("files") or {}
-            columns = st.columns(4)
-            for column, name in zip(columns, ("resume.pdf", "resume.docx", "letter.pdf", "letter.docx")):
-                if name in files:
-                    column.download_button(name, db.download(state.db, files[name]), file_name=f"{row['company']} {name}", key=f"{row['id']}{name}")
+            for problem in row.get("problems") or []:
+                st.warning(problem)
+            if st.toggle("Show downloads", key=f"dl{row['id']}"):
+                columns = st.columns(4)
+                for column, name in zip(columns, ("resume.pdf", "resume.docx", "letter.pdf", "letter.docx")):
+                    if name in files:
+                        column.download_button(name, db.download(state.db, files[name]), file_name=f"{row['company']} {name}", key=f"{row['id']}{name}")
             status = st.selectbox("Status", STATUSES, STATUSES.index(row["status"]) if row["status"] in STATUSES else 0, key=f"s{row['id']}")
             notes = st.text_input("Notes", row.get("notes") or "", key=f"n{row['id']}")
             if st.button("Save status", key=f"save{row['id']}"):
                 db.update_pack(state.db, row["id"], status=status, notes=notes)
                 st.rerun()
-            if "pack.json" in files and st.toggle("Edit letter", key=f"edit{row['id']}"):
+            if "pack.json" in files and st.toggle("Edit resume and letter", key=f"edit{row['id']}"):
                 saved = json.loads(db.download(state.db, files["pack.json"]))
                 pack, job = saved["pack"], saved["job"]
+                resume = pack["resume"]
+                resume["summary"] = st.text_area("Resume summary", resume.get("summary", ""), key=f"rs{row['id']}")
+                resume["skills"] = [s for s in st.text_area("Resume skills, one group per line", "\n".join(resume.get("skills", [])), key=f"rk{row['id']}").splitlines() if s.strip()]
                 pack["letter"] = [p for p in st.text_area("Letter paragraphs (blank line between)", "\n\n".join(pack["letter"]), height=300, key=f"l{row['id']}").split("\n\n") if p.strip()]
                 problems = check_pack(pack, profile, job, [])
                 for problem in problems:
                     st.warning(problem)
-                if st.checkbox("I've checked this and it's true", key=f"ok{row['id']}") and st.button("Save edited letter", key=f"sl{row['id']}"):
-                    for name, data in {"letter.pdf": letter_pdf(profile, job, pack), "letter.docx": letter_docx(profile, job, pack),
+                if st.checkbox("I've checked this and it's true", key=f"ok{row['id']}") and st.button("Save edits", key=f"sl{row['id']}"):
+                    pack = trim_to_one_page(pack, lambda p: resume_pdf(profile, p)[1])
+                    for name, data in {"resume.pdf": resume_pdf(profile, pack)[0], "resume.docx": resume_docx(profile, pack),
+                                       "letter.pdf": letter_pdf(profile, job, pack), "letter.docx": letter_docx(profile, job, pack),
                                        "pack.json": json.dumps({"pack": pack, "job": job}).encode()}.items():
-                        state.db.storage.from_("packs").upload(files[name], data, {"upsert": "true"})
+                        if name in files:
+                            state.db.storage.from_("packs").upload(files[name], data, {"upsert": "true"})
+                    db.update_pack(state.db, row["id"], problems=problems)
                     st.success("Saved.")
 
 
@@ -239,8 +268,13 @@ def account_page():
     st.markdown(PRIVACY)
     st.subheader("Delete my data")
     if st.text_input("Type DELETE to remove your profile, packs, files and account") == "DELETE" and st.button("Delete everything"):
-        db.delete_my_data(state.db, db.service_client(), state.user.id)
-        state.user = None
+        try:
+            db.delete_my_data(state.db, db.service_client(), state.user.id)
+        except Exception as error:
+            db.log_event(state.db, "delete_error", type(error).__name__)
+            st.error("Couldn't finish deleting. Please try again, or ask Sanad to remove your account.")
+            return
+        state.clear()
         st.rerun()
 
 
@@ -252,9 +286,12 @@ def admin_page():
     for account in accounts:
         left, right = st.columns([4, 1])
         left.write(f"{account['email']} (joined {account['created_at']})")
-        if account["email"] != os.environ["ADMIN_EMAIL"] and right.button("Delete", key=f"del{account['id']}"):
-            db.admin_delete_account(admin, account["id"])
-            st.rerun()
+        if not is_admin(account["email"]) and right.button("Delete", key=f"del{account['id']}"):
+            try:
+                db.admin_delete_account(admin, account["id"])
+                st.rerun()
+            except Exception as error:
+                st.error(f"Couldn't delete that account: {type(error).__name__}. Try again.")
     stats = db.admin_stats(admin)
     st.subheader("Packs per student per day")
     st.dataframe(stats["usage"], use_container_width=True)
@@ -281,15 +318,17 @@ if not record or not record.get("consent_at"):
     st.stop()
 
 profile = record["data"] or empty_profile()
-pages = ["My profile", "Internships", "My packs", "Tracker", "My account"] + (["Admin"] if state.user.email == os.environ["ADMIN_EMAIL"] else [])
+if state.get("profile_user") != state.user.id:  # working copy for the profile page; other pages use what's saved
+    state.profile, state.profile_version, state.profile_user = json.loads(json.dumps(profile)), 0, state.user.id
+pages = ["My profile", "Internships", "My packs", "Tracker", "My account"] + (["Admin"] if is_admin(state.user.email) else [])
 page = st.sidebar.radio("Go to", pages)
 if st.sidebar.button("Log out"):
     db.sign_out(state.db)
-    state.user = None
+    state.clear()
     st.rerun()
 
 if page == "My profile":
-    profile_page(profile)
+    profile_page()
 elif page == "Internships":
     internships_page(profile)
 elif page == "My packs":

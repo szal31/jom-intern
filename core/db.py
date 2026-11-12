@@ -92,14 +92,25 @@ def log_event(db, kind: str, detail: str):
         pass  # logging must never break a student's page
 
 
-def delete_my_data(db, admin, user_id: str):
-    """Remove the student's files, rows and account."""
-    files = [f"{user_id}/{p['id']}/{name}" for p in list_packs(db, user_id) for name in (p.get("files") or {})]
+def all_files(db, user_id: str) -> list[str]:
+    """Every file in the student's folder, including ones no pack row points to."""
+    bucket = db.storage.from_("packs")
+    return [f"{user_id}/{folder['name']}/{f['name']}" for folder in bucket.list(user_id) for f in bucket.list(f"{user_id}/{folder['name']}")]
+
+
+def _erase(db, admin, user_id: str):
+    """Files first, then rows, then the account: a failure part-way leaves nothing orphaned behind a live row."""
+    files = all_files(admin, user_id)
     if files:
-        db.storage.from_("packs").remove(files)
+        admin.storage.from_("packs").remove(files)
     for table in ("packs", "usage", "profiles"):
         db.table(table).delete().eq("user_id", user_id).execute()
     admin.auth.admin.delete_user(user_id)
+
+
+def delete_my_data(db, admin, user_id: str):
+    """Remove the student's files, rows and account."""
+    _erase(db, admin, user_id)
 
 
 def admin_stats(admin) -> dict:
@@ -113,10 +124,7 @@ def admin_accounts(admin) -> list[dict]:
 
 
 def admin_delete_account(admin, user_id: str):
-    admin.table("packs").delete().eq("user_id", user_id).execute()
-    admin.table("usage").delete().eq("user_id", user_id).execute()
-    admin.table("profiles").delete().eq("user_id", user_id).execute()
-    admin.auth.admin.delete_user(user_id)
+    _erase(admin, admin, user_id)
 
 
 def load_job_list(db) -> list[dict]:

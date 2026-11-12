@@ -13,6 +13,7 @@ create table public.packs (
   status text not null default 'Ready',
   notes text default '',
   files jsonb default '{}',
+  problems jsonb default '[]',
   created_at timestamptz not null default now()
 );
 
