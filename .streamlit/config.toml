@@ -1,2 +1,18 @@
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "viewer"
+
+[theme]
+base = "light"
+primaryColor = "#0F766E"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0FDFA"
+textColor = "#134E4A"
+linkColor = "#0F766E"
+borderColor = "#99F6E4"
+showWidgetBorder = true
+baseRadius = "medium"
+font = "'Plus Jakarta Sans':https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap, sans-serif"
+headingFontWeights = [700, 700, 600, 600, 600, 600]

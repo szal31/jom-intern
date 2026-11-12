@@ -24,7 +24,7 @@ PRIVACY = """**Before you start**
 - Your details are sent to Google's Gemini AI to write your documents. On the free tier, Google may use what's sent to improve its products.
 - You can delete everything, including your account, at any time from **My account**."""
 
-st.set_page_config(page_title="Internship Pack", page_icon="📄")
+st.set_page_config(page_title="Internship Pack", page_icon=":material/description:")
 
 try:
     secrets = dict(st.secrets)
@@ -52,9 +52,28 @@ def is_admin(email):
     return (email or "").casefold() == os.environ["ADMIN_EMAIL"].casefold()
 
 
+def go_to(page):
+    """Button callback: switch the sidebar page before it's drawn."""
+    state.page = page
+
+
+def profile_steps(profile):
+    contact, window = profile.get("contact") or {}, profile.get("window") or {}
+    return [("Name and email", bool(contact.get("name") and contact.get("email"))),
+            ("Education", bool(profile.get("education"))),
+            ("Experience or projects", bool(profile.get("experience") or profile.get("projects"))),
+            ("At least one story", bool(profile.get("stories"))),
+            ("Internship dates", bool(window.get("start") and window.get("end")))]
+
+
 def login_page():
     st.title("Internship Pack")
     st.write("Turn your resume into a tailored resume and cover letter for each internship.")
+    one, two, three = st.columns(3)
+    one.markdown("**1. Upload your resume**  \nWe read it into sections you can check and edit.")
+    two.markdown("**2. Pick an internship**  \nFrom the weekly list, or paste any job ad.")
+    three.markdown("**3. Get your pack**  \nA one-page resume and cover letter, checked against your own facts.")
+    st.divider()
     log_in, sign_up = st.tabs(["Log in", "Sign up"])
     with log_in, st.form("login"):
         email, password = st.text_input("Email"), st.text_input("Password", type="password")
@@ -113,9 +132,16 @@ def profile_page():
     profile, v, changes = state.profile, state.profile_version, []
     st.title("My profile")
     st.caption("Everything in your resume and letters comes from here. Nothing else is added.")
-    upload = st.file_uploader("Upload your current resume (PDF or Word) to fill this in", type=["pdf", "docx"])
-    st.caption("Reading a resume replaces the sections it contains. Your stories, internship window and any field the resume leaves out are kept.")
-    if upload and st.button("Read my resume"):
+    steps = profile_steps(profile)
+    done = sum(ok for _, ok in steps)
+    st.progress(done / len(steps), text=f"Profile {done} of {len(steps)} done")
+    if done < len(steps):
+        st.caption("Still to fill in: " + ", ".join(name for name, ok in steps if not ok))
+    with st.container(border=True):
+        upload = st.file_uploader("Upload your current resume (PDF or Word) to fill this in", type=["pdf", "docx"])
+        st.caption("Reading a resume replaces the sections it contains. Your stories, internship window and any field the resume leaves out are kept.")
+        read = upload and st.button("Read my resume", icon=":material/auto_awesome:")
+    if read:
         try:
             text = read_resume(upload.getvalue(), upload.name)
             if not text:
@@ -129,35 +155,41 @@ def profile_page():
         except (ValueError, LLMError) as error:
             st.error(str(error))
     contact = profile.get("contact") or {}
-    st.subheader("Contact")
-    profile["contact"] = {f: st.text_input(f.title(), contact.get(f, ""), key=f"c{v}{f}") for f in ("name", "location", "phone", "email", "linkedin", "github")}
-    profile["summary"] = st.text_area("A line about you (optional)", profile.get("summary", ""), key=f"sum{v}")
-    edit_items("Education", "education", ["institution", "qualification", "dates", "grade"], "edu", changes)
-    edit_items("Experience", "experience", ["title", "dates"], "exp", changes)
-    edit_items("Projects", "projects", ["title", "dates", "tools"], "proj", changes)
-    edit_items("Leadership & activities", "leadership", ["title", "dates"], "lead", changes)
-    st.subheader("Skills and languages")
-    profile["skills"] = [s for s in st.text_area("Skills, one group per line (e.g. Analytics: Power BI, Excel)", "\n".join(profile.get("skills", [])), key=f"sk{v}").splitlines() if s.strip()]
-    profile["languages"] = [s for s in st.text_area("Languages, one per line", "\n".join(profile.get("languages", [])), key=f"lang{v}").splitlines() if s.strip()]
-    st.subheader("Your stories")
-    st.caption("3 to 5 real experiences for cover letters: a challenge, what you did, what happened.")
-    edit_items("Story", "stories", ["situation", "action", "result"], "story", changes)
+    basics, background, skills, stories, window_tab = st.tabs(["Contact", "Education & experience", "Skills", "Stories", "Internship window"])
+    with basics:
+        left, right = st.columns(2)
+        profile["contact"] = {f: (left if i % 2 == 0 else right).text_input(f.title(), contact.get(f, ""), key=f"c{v}{f}")
+                              for i, f in enumerate(("name", "email", "phone", "location", "linkedin", "github"))}
+        profile["summary"] = st.text_area("A line about you (optional)", profile.get("summary", ""), key=f"sum{v}")
+    with background:
+        edit_items("Education", "education", ["institution", "qualification", "dates", "grade"], "edu", changes)
+        edit_items("Experience", "experience", ["title", "dates"], "exp", changes)
+        edit_items("Projects", "projects", ["title", "dates", "tools"], "proj", changes)
+        edit_items("Leadership & activities", "leadership", ["title", "dates"], "lead", changes)
+    with skills:
+        profile["skills"] = [s for s in st.text_area("Skills, one group per line (e.g. Analytics: Power BI, Excel)", "\n".join(profile.get("skills", [])), key=f"sk{v}", height=180).splitlines() if s.strip()]
+        profile["languages"] = [s for s in st.text_area("Languages, one per line", "\n".join(profile.get("languages", [])), key=f"lang{v}").splitlines() if s.strip()]
+    with stories:
+        st.caption("3 to 5 real experiences for cover letters: a challenge, what you did, what happened.")
+        edit_items("Story", "stories", ["situation", "action", "result"], "story", changes)
     window = profile.get("window") or {}
-    st.subheader("Internship window")
-    profile["window"] = {
-        "start": st.text_input("Start date (e.g. 15 March 2027)", window.get("start", ""), key=f"ws{v}"),
-        "end": st.text_input("End date (e.g. 4 July 2027)", window.get("end", ""), key=f"we{v}"),
-        "weeks": st.text_input("Length in weeks (e.g. 14 to 16)", window.get("weeks", ""), key=f"ww{v}"),
-        "locations": st.text_input("Locations, comma separated (e.g. Kuala Lumpur, Selangor)", window.get("locations", ""), key=f"wl{v}"),
-    }
+    with window_tab:
+        left, right = st.columns(2)
+        profile["window"] = {
+            "start": left.text_input("Start date (e.g. 15 March 2027)", window.get("start", ""), key=f"ws{v}"),
+            "end": right.text_input("End date (e.g. 4 July 2027)", window.get("end", ""), key=f"we{v}"),
+            "weeks": left.text_input("Length in weeks (e.g. 14 to 16)", window.get("weeks", ""), key=f"ww{v}"),
+            "locations": right.text_input("Locations, comma separated (e.g. Kuala Lumpur, Selangor)", window.get("locations", ""), key=f"wl{v}"),
+        }
     if changes:  # applied after every field is read, so nothing typed is lost; new keys stop stale widget values
         for change in changes:
             change()
         state.profile_version += 1
         st.rerun()
     st.caption("Adding or removing an entry doesn't save. Press Save profile when you're done.")
-    if st.button("Save profile", type="primary"):
+    if st.button("Save profile", type="primary", icon=":material/save:"):
         db.save_profile(state.db, state.user.id, profile)
+        st.toast("Profile saved.", icon=":material/check_circle:")
         st.success("Saved.")
 
 
@@ -167,7 +199,7 @@ def make_pack(profile, job):
         return
     others = sorted({p["company"] for p in db.list_packs(state.db, state.user.id)} | {j["company"] for j in db.load_job_list(state.db)})
     try:
-        with st.spinner("Writing and checking your resume and letter..."):
+        with st.spinner("Writing and checking your resume and letter. This takes about a minute..."):
             pack, problems = build_pack(profile, job, others, llm=LLM)
             pack = trim_to_one_page(pack, lambda p: resume_pdf(profile, p)[1])
             files = {"resume.pdf": resume_pdf(profile, pack)[0], "resume.docx": resume_docx(profile, pack),
@@ -186,29 +218,32 @@ def make_pack(profile, job):
         db.log_event(state.db, "checker", f"{len(problems)} problems")  # counts only: problems quote the student's text
         st.warning("Saved, but please fix these before using it (My packs → Edit):\n- " + "\n- ".join(problems))
     else:
-        st.success("Done. Find it under My packs.")
+        st.success("Done. Your pack is ready.")
+        st.button("Open My packs", on_click=go_to, args=("My packs",), key=f"open{job['company']}")
 
 
 def internships_page(profile):
     st.title("Internships")
     if not (profile.get("contact") or {}).get("name"):
-        st.info("Fill in your profile first.")
+        st.info("Fill in your profile first. Your resume and letters are written only from it.")
+        st.button("Go to My profile", on_click=go_to, args=("My profile",), type="primary")
         return
     recommended, own = st.tabs(["Recommended", "Paste my own"])
     with recommended:
         picks = recommend(db.load_job_list(state.db), profile, date.today())
         if not picks:
-            st.write("No recommended internships right now. Paste your own instead.")
+            st.info("No recommended internships right now. Use the Paste my own tab for any job ad you find.")
         for i, job in enumerate(picks):
-            with st.expander(f"{job['company']}: {job['role']} ({job['location']})"):
+            with st.expander(f"**{job['company']}**: {job['role']} · {job['location']}"):
                 st.write(job["posting_text"][:800])
                 st.link_button("Open posting", job["link"]) if job["link"] else None
-                if st.button("Make my pack", key=f"rec{i}"):
+                if st.button("Make my pack", key=f"rec{i}", type="primary", icon=":material/description:"):
                     make_pack(profile, {k: job[k] for k in ("company", "role", "link", "posting_text")} | {"address": job["location"]})
     with own, st.form("own"):
         job = {"company": st.text_input("Company"), "role": st.text_input("Role (exact title)"), "link": st.text_input("Link (optional)"),
                "address": st.text_input("Office address (optional)"), "posting_text": st.text_area("Paste the job description")}
-        if st.form_submit_button("Make my pack"):
+        st.caption("Paste the full job ad: the letter uses what the team does.")
+        if st.form_submit_button("Make my pack", type="primary"):
             if not (job["company"] and job["role"] and job["posting_text"]):
                 st.error("Company, role and job description are needed.")
             else:
@@ -219,9 +254,11 @@ def packs_page(profile):
     st.title("My packs")
     packs = db.list_packs(state.db, state.user.id)
     if not packs:
-        st.write("No packs yet. Make one under Internships.")
+        st.info("No packs yet. Each internship you pick gets its own resume and cover letter.")
+        st.button("Find an internship", on_click=go_to, args=("Internships",), type="primary")
     for row in packs:
-        with st.expander(f"{row['company']}: {row['role']} ({row['created_at'][:10]})"):
+        flag = " · needs fixes" if row.get("problems") else ""
+        with st.expander(f"**{row['company']}**: {row['role']} · {row['status']} · {row['created_at'][:10]}{flag}"):
             files = row.get("files") or {}
             for problem in row.get("problems") or []:
                 st.warning(problem)
@@ -321,8 +358,11 @@ profile = record["data"] or empty_profile()
 if state.get("profile_user") != state.user.id:  # working copy for the profile page; other pages use what's saved
     state.profile, state.profile_version, state.profile_user = json.loads(json.dumps(profile)), 0, state.user.id
 pages = ["My profile", "Internships", "My packs", "Tracker", "My account"] + (["Admin"] if is_admin(state.user.email) else [])
-page = st.sidebar.radio("Go to", pages)
-if st.sidebar.button("Log out"):
+ICONS = {"My profile": "person", "Internships": "work", "My packs": "folder_open", "Tracker": "table_chart", "My account": "manage_accounts", "Admin": "admin_panel_settings"}
+st.sidebar.markdown("### Internship Pack")
+st.sidebar.caption(f"Signed in as {state.user.email}")
+page = st.sidebar.radio("Go to", pages, key="page", format_func=lambda p: f":material/{ICONS[p]}: {p}", label_visibility="collapsed")
+if st.sidebar.button("Log out", icon=":material/logout:"):
     db.sign_out(state.db)
     state.clear()
     st.rerun()

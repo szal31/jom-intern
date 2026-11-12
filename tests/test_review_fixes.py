@@ -103,7 +103,7 @@ def test_admin_email_match_ignores_case(monkeypatch):
     app, _ = logged_in_app(monkeypatch)
     monkeypatch.setenv("ADMIN_EMAIL", "Student@Example.com")
     app.run(timeout=30)
-    assert "Admin" in app.sidebar.radio[0].options
+    assert any(o.endswith("Admin") for o in app.sidebar.radio[0].options)
 
 
 def test_remove_story_keeps_the_right_one(monkeypatch):
