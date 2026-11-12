@@ -65,3 +65,4 @@ a:hover { text-decoration-thickness: 3px; }
 .jom-band p { margin: 0; font-size: 1.125rem; max-width: 36ch; }
 [data-baseweb="tab-highlight"] { background-color: var(--color-ink) !important; height: var(--rule-bar) !important; }
 [data-baseweb="tab-border"] { background-color: var(--color-ink) !important; height: var(--rule-bar) !important; }
+.st-key-uploadbox { padding: 1rem 1.25rem; }

@@ -8,16 +8,19 @@ class LLMError(Exception):
     """The model failed, hit its quota, or returned something unusable."""
 
 
-BUSY = ("503", "504", "429", "UNAVAILABLE", "DEADLINE_EXCEEDED", "RESOURCE_EXHAUSTED")
+BUSY = ("503", "504", "429", "UNAVAILABLE", "DEADLINE_EXCEEDED", "RESOURCE_EXHAUSTED", "timed out", "Timeout")
 
 
 def gemini(prompt: str, call=None) -> str:
     """GEMINI_MODEL may list backups, comma separated; a busy model falls through to the next."""
-    models = [m.strip() for m in os.environ.get("GEMINI_MODEL", "gemini-3.5-flash,gemini-3.5-flash-lite").split(",") if m.strip()]
+    models = [m.strip() for m in os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite,gemini-3.1-flash-lite").split(",") if m.strip()]
     if call is None:
         from google import genai
+        from google.genai import types
 
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        # One 60-second try plus one retry per model, so a busy model hands over to the backup instead of backing off for minutes.
+        options = types.HttpOptions(timeout=60_000, retry_options=types.HttpRetryOptions(attempts=2))
+        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"], http_options=options)
         call = lambda model: client.models.generate_content(model=model, contents=prompt, config={"response_mime_type": "application/json"}).text
     for i, model in enumerate(models):
         try:

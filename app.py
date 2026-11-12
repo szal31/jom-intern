@@ -332,7 +332,12 @@ def admin_page():
     st.title("Admin")
     admin = db.service_client()
     accounts = db.admin_accounts(admin)
-    st.metric("Students", f"{len(accounts) - 1} of 10")
+    stats = db.admin_stats(admin)
+    st.html(f'''<div class="jom-cells">
+      <div class="jom-cell"><b>{len(accounts) - 1} of 10</b><span>students signed up</span></div>
+      <div class="jom-cell"><b>{sum(row["packs"] for row in stats["usage"])}</b><span>packs made</span></div>
+      <div class="jom-cell"><b>{len(stats["events"])}</b><span>recent errors and checker failures</span></div>
+    </div>''')
     for account in accounts:
         left, right = st.columns([4, 1])
         left.write(f"{account['email']} (joined {account['created_at']})")
@@ -342,7 +347,6 @@ def admin_page():
                 st.rerun()
             except Exception as error:
                 st.error(f"Couldn't delete that account: {type(error).__name__}. Try again.")
-    stats = db.admin_stats(admin)
     st.subheader("Packs per student per day")
     if stats["usage"]:
         st.dataframe(stats["usage"], use_container_width=True)
@@ -354,7 +358,7 @@ def admin_page():
     else:
         st.write("No errors or checker failures yet.")
     st.subheader("Weekly job list")
-    upload = st.file_uploader("Upload jobs_export.csv", type="csv")
+    upload = st.file_uploader("Upload `jobs_export.csv`", type="csv")
     if upload and st.button("Replace job list"):
         try:
             rows = load_jobs(upload.getvalue())

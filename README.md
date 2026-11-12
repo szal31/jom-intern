@@ -14,7 +14,7 @@ A Streamlit app that turns a student's resume into a tailored, checked resume an
 3. **Secrets:** create `.streamlit/secrets.toml` (never commit it):
    ```toml
    GEMINI_API_KEY = "..."
-   GEMINI_MODEL = "gemini-3.5-flash,gemini-3.5-flash-lite,gemini-3.1-flash-lite"
+   GEMINI_MODEL = "gemini-3.5-flash-lite,gemini-3.1-flash-lite"
    SUPABASE_URL = "https://<project>.supabase.co"
    SUPABASE_ANON_KEY = "..."
    SUPABASE_SERVICE_KEY = "..."
