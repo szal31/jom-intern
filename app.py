@@ -219,14 +219,14 @@ def make_pack(profile, job):
 def internships_page(profile):
     st.title("Internships")
     if not (profile.get("contact") or {}).get("name"):
-        st.info("Fill in your profile first. Your resume and letters are written only from it.")
+        st.write("Fill in your profile first. Your resume and letters are written only from it.")
         st.button("Go to My profile", on_click=go_to, args=("My profile",), type="primary")
         return
     recommended, own = st.tabs(["Recommended", "Paste my own"])
     with recommended:
         picks = recommend(db.load_job_list(state.db), profile, date.today())
         if not picks:
-            st.info("No recommended internships right now. Use the Paste my own tab for any job ad you find.")
+            st.write("No recommended internships right now. Use the Paste my own tab for any job ad you find.")
         for i, job in enumerate(picks):
             with st.expander(f"**{job['company']}**: {job['role']} ({job['location']})"):
                 st.write(job["posting_text"][:800])
@@ -248,7 +248,7 @@ def packs_page(profile):
     st.title("My packs")
     packs = db.list_packs(state.db, state.user.id)
     if not packs:
-        st.info("No packs yet. Each internship you pick gets its own resume and cover letter.")
+        st.write("No packs yet. Each internship you pick gets its own resume and cover letter.")
         st.button("Find an internship", on_click=go_to, args=("Internships",), type="primary")
     for row in packs:
         flag = " (needs fixes)" if row.get("problems") else ""
@@ -291,13 +291,17 @@ def packs_page(profile):
 def tracker_page():
     st.title("Tracker")
     packs = db.list_packs(state.db, state.user.id)
+    if not packs:
+        st.write("Every pack you make is listed here with its status, ready to download as a spreadsheet.")
+        st.button("Find an internship", on_click=go_to, args=("Internships",), type="primary", key="tracker_empty")
+        return
     st.dataframe([{k: p.get(k) for k in ("company", "role", "status", "notes", "link")} | {"made": p["created_at"][:10]} for p in packs], use_container_width=True)
     st.download_button("Download as Excel", tracker_xlsx(packs), file_name="internship_tracker.xlsx")
 
 
 def account_page():
     st.title("My account")
-    st.markdown(PRIVACY)
+    st.markdown(PRIVACY.replace("**Before you start**", "**Your data**").replace(" at any time from **My account**", " at any time, below"))
     st.subheader("Delete my data")
     if st.text_input("Type DELETE to remove your profile, packs, files and account") == "DELETE" and st.button("Delete everything"):
         try:
@@ -326,9 +330,15 @@ def admin_page():
                 st.error(f"Couldn't delete that account: {type(error).__name__}. Try again.")
     stats = db.admin_stats(admin)
     st.subheader("Packs per student per day")
-    st.dataframe(stats["usage"], use_container_width=True)
+    if stats["usage"]:
+        st.dataframe(stats["usage"], use_container_width=True)
+    else:
+        st.write("No packs made yet.")
     st.subheader("Recent errors and checker failures")
-    st.dataframe(stats["events"], use_container_width=True)
+    if stats["events"]:
+        st.dataframe(stats["events"], use_container_width=True)
+    else:
+        st.write("No errors or checker failures yet.")
     st.subheader("Weekly job list")
     upload = st.file_uploader("Upload jobs_export.csv", type="csv")
     if upload and st.button("Replace job list"):
