@@ -69,15 +69,10 @@ def profile_steps(profile):
 def login_page():
     st.title("Internship Pack")
     st.write("Turn your resume into a tailored resume and cover letter for each internship.")
-    one, two, three = st.columns(3)
-    one.markdown("**1. Upload your resume**  \nWe read it into sections you can check and edit.")
-    two.markdown("**2. Pick an internship**  \nFrom the weekly list, or paste any job ad.")
-    three.markdown("**3. Get your pack**  \nA one-page resume and cover letter, checked against your own facts.")
-    st.divider()
     log_in, sign_up = st.tabs(["Log in", "Sign up"])
     with log_in, st.form("login"):
         email, password = st.text_input("Email"), st.text_input("Password", type="password")
-        if st.form_submit_button("Log in"):
+        if st.form_submit_button("Log in", type="primary"):
             try:
                 state.user = db.sign_in(state.db, email, password)
                 st.rerun()
@@ -91,7 +86,7 @@ def login_page():
         st.caption(f"{seats} of 10 places left.")
         with st.form("signup"):
             email, password = st.text_input("Email"), st.text_input("Password (8+ characters)", type="password")
-            if st.form_submit_button("Create account"):
+            if st.form_submit_button("Create account", type="primary"):
                 try:
                     result = db.sign_up(state.db, email, password)
                     if result.session:
@@ -140,7 +135,7 @@ def profile_page():
     with st.container(border=True):
         upload = st.file_uploader("Upload your current resume (PDF or Word) to fill this in", type=["pdf", "docx"])
         st.caption("Reading a resume replaces the sections it contains. Your stories, internship window and any field the resume leaves out are kept.")
-        read = upload and st.button("Read my resume", icon=":material/auto_awesome:")
+        read = upload and st.button("Read my resume")
     if read:
         try:
             text = read_resume(upload.getvalue(), upload.name)
@@ -187,9 +182,8 @@ def profile_page():
         state.profile_version += 1
         st.rerun()
     st.caption("Adding or removing an entry doesn't save. Press Save profile when you're done.")
-    if st.button("Save profile", type="primary", icon=":material/save:"):
+    if st.button("Save profile", type="primary"):
         db.save_profile(state.db, state.user.id, profile)
-        st.toast("Profile saved.", icon=":material/check_circle:")
         st.success("Saved.")
 
 
@@ -234,10 +228,10 @@ def internships_page(profile):
         if not picks:
             st.info("No recommended internships right now. Use the Paste my own tab for any job ad you find.")
         for i, job in enumerate(picks):
-            with st.expander(f"**{job['company']}**: {job['role']} · {job['location']}"):
+            with st.expander(f"**{job['company']}**: {job['role']} ({job['location']})"):
                 st.write(job["posting_text"][:800])
                 st.link_button("Open posting", job["link"]) if job["link"] else None
-                if st.button("Make my pack", key=f"rec{i}", type="primary", icon=":material/description:"):
+                if st.button("Make my pack", key=f"rec{i}", type="primary"):
                     make_pack(profile, {k: job[k] for k in ("company", "role", "link", "posting_text")} | {"address": job["location"]})
     with own, st.form("own"):
         job = {"company": st.text_input("Company"), "role": st.text_input("Role (exact title)"), "link": st.text_input("Link (optional)"),
@@ -257,8 +251,9 @@ def packs_page(profile):
         st.info("No packs yet. Each internship you pick gets its own resume and cover letter.")
         st.button("Find an internship", on_click=go_to, args=("Internships",), type="primary")
     for row in packs:
-        flag = " · needs fixes" if row.get("problems") else ""
-        with st.expander(f"**{row['company']}**: {row['role']} · {row['status']} · {row['created_at'][:10]}{flag}"):
+        flag = " (needs fixes)" if row.get("problems") else ""
+        with st.expander(f"**{row['company']}**: {row['role']}{flag}"):
+            st.caption(f"{row['status']}, made {row['created_at'][:10]}")
             files = row.get("files") or {}
             for problem in row.get("problems") or []:
                 st.warning(problem)
@@ -323,7 +318,7 @@ def admin_page():
     for account in accounts:
         left, right = st.columns([4, 1])
         left.write(f"{account['email']} (joined {account['created_at']})")
-        if not is_admin(account["email"]) and right.button("Delete", key=f"del{account['id']}"):
+        if not is_admin(account["email"]) and right.checkbox("Delete", key=f"del{account['id']}") and right.button("Confirm", key=f"conf{account['id']}", type="primary"):
             try:
                 db.admin_delete_account(admin, account["id"])
                 st.rerun()
@@ -362,7 +357,7 @@ ICONS = {"My profile": "person", "Internships": "work", "My packs": "folder_open
 st.sidebar.markdown("### Internship Pack")
 st.sidebar.caption(f"Signed in as {state.user.email}")
 page = st.sidebar.radio("Go to", pages, key="page", format_func=lambda p: f":material/{ICONS[p]}: {p}", label_visibility="collapsed")
-if st.sidebar.button("Log out", icon=":material/logout:"):
+if st.sidebar.button("Log out"):
     db.sign_out(state.db)
     state.clear()
     st.rerun()

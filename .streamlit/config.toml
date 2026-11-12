@@ -1,3 +1,7 @@
+# Hallmark · redesign: full · scope: app · shape: app screen · theme: coral (dealt 3/3, seed sign-in-tool-where-university-3955·4b5faeba·2026-11-12·r0) · palette, faces and radius only
+# critique: warm paper and dark ink so the documents lead; ink marks the primary action and selection, nothing else is coloured
+# answered 48: Streamlit has no :root, so this theme block is the token set; borderColor darkened from Coral's rule (1.7:1) to #8A817C (3.3:1 on input fill) for field edges
+
 [browser]
 gatherUsageStats = false
 
@@ -6,13 +10,18 @@ toolbarMode = "viewer"
 
 [theme]
 base = "light"
-primaryColor = "#0F766E"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0FDFA"
-textColor = "#134E4A"
-linkColor = "#0F766E"
-borderColor = "#99F6E4"
+primaryColor = "#1D1614"
+backgroundColor = "#F8F4F1"
+secondaryBackgroundColor = "#F1ECE8"
+textColor = "#1D1614"
+linkColor = "#BB3D31"
+borderColor = "#8A817C"
 showWidgetBorder = true
-baseRadius = "medium"
-font = "'Plus Jakarta Sans':https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap, sans-serif"
-headingFontWeights = [700, 700, 600, 600, 600, 600]
+baseRadius = "8px"
+font = "'General Sans':https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600&display=swap, sans-serif"
+codeFont = "'Geist Mono':https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400&display=swap, monospace"
+headingFontWeights = [600, 600, 600, 600, 600, 600]
+
+[theme.sidebar]
+backgroundColor = "#F1ECE8"
+secondaryBackgroundColor = "#E8E1DD"
