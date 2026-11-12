@@ -49,17 +49,23 @@ create policy "own usage" on public.usage for all using (user_id = auth.uid()) w
 create policy "log events" on public.events for insert to authenticated with check (true);
 create policy "read jobs" on public.jobs for select to authenticated using (true);
 
--- At most 10 accounts in the pilot.
+-- Tables are not exposed automatically: logged-out visitors (anon) get nothing, students get only what they use.
+grant select, insert, update, delete on public.profiles, public.packs, public.usage to authenticated;
+grant insert on public.events to authenticated;
+grant select on public.jobs to authenticated;
+grant all on public.profiles, public.packs, public.usage, public.events, public.jobs to service_role;
+
+-- At most 11 accounts: Sanad (admin) plus 10 students.
 create function public.pilot_seats_left() returns int
 language sql security definer set search_path = '' as $$
-  select greatest(0, 10 - (select count(*)::int from auth.users));
+  select greatest(0, 11 - (select count(*)::int from auth.users));
 $$;
 grant execute on function public.pilot_seats_left() to anon, authenticated;
 
 create function public.enforce_pilot_cap() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if (select count(*) from auth.users) >= 10 then
+  if (select count(*) from auth.users) >= 11 then
     raise exception 'pilot_full';
   end if;
   return new;

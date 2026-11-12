@@ -282,7 +282,7 @@ def admin_page():
     st.title("Admin")
     admin = db.service_client()
     accounts = db.admin_accounts(admin)
-    st.metric("Accounts", f"{len(accounts)} of 10")
+    st.metric("Students", f"{len(accounts) - 1} of 10")
     for account in accounts:
         left, right = st.columns([4, 1])
         left.write(f"{account['email']} (joined {account['created_at']})")

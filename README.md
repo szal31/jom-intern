@@ -8,7 +8,7 @@ A Streamlit app that turns a student's resume into a tailored, checked resume an
 - Files are made as Word and one-page PDF, saved privately per student in Supabase, and listed in an Excel-downloadable tracker.
 
 ## Setup
-1. **Supabase:** create a free project. In the SQL editor, run `supabase/schema.sql`. Under Authentication, keep email sign-up on and keep "Confirm email" on, so nobody can sign up with someone else's address. Sign up first yourself with the `ADMIN_EMAIL` address before sharing the link: the admin page is shown to whoever owns that confirmed address, and your account takes one of the 10 places (raise the number in `pilot_seats_left` and `enforce_pilot_cap` to 11 if you want 10 students).
+1. **Supabase:** create a free project. In the SQL editor, run `supabase/schema.sql`. Under Authentication, keep email sign-up on and keep "Confirm email" on, so nobody can sign up with someone else's address. Sign up first yourself with the `ADMIN_EMAIL` address before sharing the link: the admin page is shown to whoever owns that confirmed address. The cap is 11 accounts: you plus 10 students.
    If you ran an older schema.sql, add the new column: `alter table public.packs add column problems jsonb default '[]';`
 2. **Gemini:** create an API key in Google AI Studio.
 3. **Secrets:** create `.streamlit/secrets.toml` (never commit it):
