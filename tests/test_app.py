@@ -1,10 +1,13 @@
-﻿from streamlit.testing.v1 import AppTest
+from pathlib import Path
+
+from streamlit.testing.v1 import AppTest
 
 
-def test_unconfigured_app_explains_instead_of_crashing(monkeypatch):
+def test_unconfigured_app_explains_instead_of_crashing(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)  # away from a real .streamlit/secrets.toml
     for name in ("GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_KEY", "ADMIN_EMAIL"):
         monkeypatch.delenv(name, raising=False)
-    app = AppTest.from_file("../app.py").run(timeout=30)
+    app = AppTest.from_file(str(Path(__file__).parent.parent / "app.py")).run(timeout=30)
     assert not app.exception
     assert "isn't set up yet" in app.error[0].value
 
