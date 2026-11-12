@@ -19,7 +19,7 @@ def availability(profile: dict) -> str:
     if not (window.get("start") and window.get("end")):
         return ""
     weeks = f"{window['weeks']}-week " if window.get("weeks") else ""
-    return f"Available for a {weeks}internship, {window['start']} to {window['end']}."
+    return f"Available for a {weeks}internship, {window['start'].strip().title()} to {window['end'].strip().title()}."
 
 
 def _contact_line(profile: dict) -> str:
@@ -96,7 +96,7 @@ def resume_pdf(profile: dict, pack: dict) -> tuple[bytes, int]:
             pdf.cell(width, 7, _latin(content), align="C", new_x="LMARGIN", new_y="NEXT")
         elif kind == "contact":
             pdf.set_font("Helvetica", "", 9)
-            pdf.multi_cell(width, 4.5, _latin(content), align="C")
+            pdf.multi_cell(width, 4.5, _latin(content), align="C", new_x="LMARGIN", new_y="NEXT")
         elif kind == "heading":
             pdf.ln(1.5)
             pdf.set_font("Helvetica", "B", 10)
@@ -110,10 +110,10 @@ def resume_pdf(profile: dict, pack: dict) -> tuple[bytes, int]:
         elif kind == "bullet":
             pdf.set_font("Helvetica", "", 9.5)
             pdf.set_x(pdf.l_margin + 3)
-            pdf.multi_cell(width - 3, 4.5, _latin(f"- {content}"))
+            pdf.multi_cell(width - 3, 4.5, _latin(f"- {content}"), new_x="LMARGIN", new_y="NEXT")
         elif content:
             pdf.set_font("Helvetica", "", 9.5)
-            pdf.multi_cell(width, 4.5, _latin(content))
+            pdf.multi_cell(width, 4.5, _latin(content), new_x="LMARGIN", new_y="NEXT")
     return bytes(pdf.output()), pdf.page
 
 
@@ -133,5 +133,5 @@ def letter_pdf(profile: dict, job: dict, pack: dict) -> bytes:
     pdf.add_page()
     pdf.set_font("Helvetica", "", 11)
     for line in _letter_lines(profile, job, pack):
-        pdf.multi_cell(pdf.epw, 5.5, _latin(line))
+        pdf.multi_cell(pdf.epw, 5.5, _latin(line), new_x="LMARGIN", new_y="NEXT")
     return bytes(pdf.output())

@@ -41,3 +41,22 @@ def test_oversized_resume_reports_more_pages():
     pack["resume"]["projects"] = [{"title": f"P{i}", "dates": "2026", "bullets": ["Built a long thing " * 20] * 3} for i in range(12)]
     _, pages = resume_pdf(PROFILE, pack)
     assert pages > 1
+
+
+def _text_starts(pdf_bytes):
+    import io
+    from pypdf import PdfReader
+    xs = []
+    for page in PdfReader(io.BytesIO(pdf_bytes)).pages:
+        page.extract_text(visitor_text=lambda text, cm, tm, *_: xs.append((tm[4], text)) if text.strip() else None)
+    return xs
+
+
+def test_no_line_starts_at_the_right_edge():
+    from tests.test_checker import GOOD, JOB, PROFILE
+    from core.render import letter_pdf, resume_pdf
+    profile = {**PROFILE, "education": [{"institution": "Uni A", "qualification": "BSc", "dates": "2025", "grade": "3.6"},
+                                        {"institution": "Uni B", "qualification": "Diploma", "dates": "2022", "grade": "3.6"}]}
+    for pdf in (resume_pdf(profile, GOOD)[0], letter_pdf(profile, JOB, GOOD)):
+        stray = [t for x, t in _text_starts(pdf) if x > 540]  # A4 is 595pt wide; right margin starts near 553pt
+        assert not stray, stray

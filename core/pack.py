@@ -22,7 +22,8 @@ def write_pack(profile: dict, job: dict, llm=None, problems=None) -> dict:
         "\"projects\": [3 or 4 most relevant, {\"title\", \"dates\", \"bullets\"}], \"leadership\": [{\"title\", \"dates\", \"bullets\"}]}, "
         "\"letter\": [5 paragraphs: the exact role and company plus who the student is and their availability window; "
         "skills tied to what this team does; soft skills from the student's stories; why this company; thanks and interview request]}.\n"
-        "Titles must be copied exactly from the profile. The letter must name the company and the exact role."
+        "Titles must be copied exactly from the profile. The letter must name the company and the exact role. "
+        "The resume summary must not mention citizenship or availability dates: the app adds availability itself."
         f"{fix}\n\nPROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\nJOB:\n{json.dumps(job, ensure_ascii=False)}"
     )
     return clean_pack(ask_json(prompt, llm=llm))
