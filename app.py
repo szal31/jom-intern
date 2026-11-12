@@ -204,7 +204,7 @@ def profile_page():
 def make_pack(profile, job):
     if db.packs_today(state.db, state.user.id) >= db.PACK_LIMIT_PER_DAY:
         st.warning(f"You've made {db.PACK_LIMIT_PER_DAY} packs today. Come back tomorrow.")
-        return
+        return False
     others = sorted({p["company"] for p in db.list_packs(state.db, state.user.id)} | {j["company"] for j in db.load_job_list(state.db)})
     try:
         with st.spinner("Writing and checking your resume and letter. This takes about a minute..."):
@@ -217,17 +217,17 @@ def make_pack(profile, job):
     except LLMError as error:
         db.log_event(state.db, "llm_error", str(error)[:200])
         st.error(f"{error} Nothing was saved, and this didn't count towards today's limit.")
-        return
+        return False
     except Exception as error:
         db.log_event(state.db, "pack_error", type(error).__name__)
         st.error("Something went wrong making this pack. Please try again in a minute.")
-        return
+        return False
     if problems:
         db.log_event(state.db, "checker", f"{len(problems)} problems")  # counts only: problems quote the student's text
         st.warning("Saved, but please fix these before using it (My packs → Edit):\n- " + "\n- ".join(problems))
     else:
         st.success("Done. Your pack is ready.")
-        st.button("Open My packs", on_click=go_to, args=("My packs",), key=f"open{job['company']}")
+    return True
 
 
 def internships_page(profile):
@@ -244,9 +244,11 @@ def internships_page(profile):
         for i, job in enumerate(picks):
             with st.expander(f"**{job['company']}**: {job['role']} ({job['location']})"):
                 st.write(job["posting_text"][:800])
-                st.link_button("Open posting", job["link"]) if job["link"] else None
-                if st.button("Make my pack", key=f"rec{i}", type="primary"):
-                    make_pack(profile, {k: job[k] for k in ("company", "role", "link", "posting_text")} | {"address": job["location"]})
+                if job["link"]:
+                    st.link_button("Open posting", job["link"])
+                if st.button("Make my pack", key=f"rec{i}", type="primary") and make_pack(profile, {k: job[k] for k in ("company", "role", "link", "posting_text")} | {"address": job["location"]}):
+                    st.button("Open My packs", on_click=go_to, args=("My packs",), key=f"open{i}")
+    made = False
     with own, st.form("own"):
         job = {"company": st.text_input("Company"), "role": st.text_input("Role (exact title)"), "link": st.text_input("Link (optional)"),
                "address": st.text_input("Office address (optional)"), "posting_text": st.text_area("Paste the job description")}
@@ -255,7 +257,9 @@ def internships_page(profile):
             if not (job["company"] and job["role"] and job["posting_text"]):
                 st.error("Company, role and job description are needed.")
             else:
-                make_pack(profile, job)
+                made = make_pack(profile, job)
+    if made:  # outside the form: Streamlit allows callbacks only on a form's submit button
+        own.button("Open My packs", on_click=go_to, args=("My packs",), key="open_own")
 
 
 def packs_page(profile):

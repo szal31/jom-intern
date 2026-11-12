@@ -112,3 +112,16 @@ def test_remove_story_keeps_the_right_one(monkeypatch):
     app, _ = logged_in_app(monkeypatch, profile)
     [b for b in app.button if b.label == "Remove"][0].click().run(timeout=30)
     assert [w.value for w in app.text_input if w.label == "Situation"] == ["Second"]
+
+
+def test_clean_pack_from_paste_form_does_not_crash(monkeypatch):
+    import core.pack
+    app, store = logged_in_app(monkeypatch, {**empty_profile(), "contact": {"name": "Jane Tan", "email": "j@example.com"}})
+    monkeypatch.setattr(core.pack, "build_pack", lambda profile, job, others, llm=None: (copy.deepcopy(GOOD), []))
+    app.sidebar.radio[0].set_value("Internships").run(timeout=30)
+    by_label(app.text_input, "Company").input("Acme Malaysia")
+    by_label(app.text_input, "Role (exact title)").input("Data Analyst Intern")
+    by_label(app.text_area, "Paste the job description").input("SQL reporting.")
+    [b for b in app.button if b.label == "Make my pack"][-1].click().run(timeout=60)
+    assert not app.exception
+    assert any(b.label == "Open My packs" for b in app.button)
