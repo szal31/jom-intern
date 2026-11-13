@@ -1,5 +1,7 @@
 """A student's profile: the only source of facts for their resume and letters."""
+import copy
 import json
+import re
 
 from core.llm import ask_json
 
@@ -19,6 +21,40 @@ SHAPE = {
     "stories": [{"situation": "", "action": "", "result": ""}],
     "window": {"start": "", "end": "", "weeks": "", "locations": ""},
 }
+
+
+# A fixed list, not the model: a model can expand a short form to the wrong university.
+UNIVERSITIES = {
+    "UiTM": "Universiti Teknologi MARA", "UM": "Universiti Malaya", "UKM": "Universiti Kebangsaan Malaysia",
+    "UPM": "Universiti Putra Malaysia", "USM": "Universiti Sains Malaysia", "UTM": "Universiti Teknologi Malaysia",
+    "IIUM": "International Islamic University Malaysia", "UIAM": "Universiti Islam Antarabangsa Malaysia",
+    "UUM": "Universiti Utara Malaysia", "UNIMAS": "Universiti Malaysia Sarawak", "UMS": "Universiti Malaysia Sabah",
+    "UPSI": "Universiti Pendidikan Sultan Idris", "USIM": "Universiti Sains Islam Malaysia", "UMT": "Universiti Malaysia Terengganu",
+    "UTHM": "Universiti Tun Hussein Onn Malaysia", "UTeM": "Universiti Teknikal Malaysia Melaka",
+    "UMPSA": "Universiti Malaysia Pahang Al-Sultan Abdullah", "UMP": "Universiti Malaysia Pahang", "UniMAP": "Universiti Malaysia Perlis",
+    "UniSZA": "Universiti Sultan Zainal Abidin", "UMK": "Universiti Malaysia Kelantan", "UPNM": "Universiti Pertahanan Nasional Malaysia",
+    "UNITEN": "Universiti Tenaga Nasional", "UTP": "Universiti Teknologi PETRONAS", "MMU": "Multimedia University",
+    "UTAR": "Universiti Tunku Abdul Rahman", "UniKL": "Universiti Kuala Lumpur", "APU": "Asia Pacific University of Technology & Innovation",
+}
+
+
+def full_institution(name: str) -> str:
+    """'UiTM Shah Alam' becomes 'Universiti Teknologi MARA (UiTM) Shah Alam'; names already in full are left alone."""
+    if any(full.casefold() in name.casefold() for full in UNIVERSITIES.values()):
+        return name
+    for short, full in UNIVERSITIES.items():
+        # case-insensitive only for short forms of 3+ letters, so the word "Um" isn't read as Universiti Malaya
+        match = re.search(rf"(?<![\w(]){re.escape(short)}(?![\w)])", name, 0 if len(short) < 3 else re.I)
+        if match:
+            return f"{name[:match.start()]}{full} ({short}){name[match.end():]}"
+    return name
+
+
+def with_full_institutions(profile: dict) -> dict:
+    expanded = copy.deepcopy(profile)
+    for entry in expanded.get("education") or []:
+        entry["institution"] = full_institution(entry.get("institution") or "")
+    return expanded
 
 
 def clean_items(items) -> list[dict]:

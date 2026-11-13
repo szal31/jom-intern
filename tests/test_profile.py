@@ -46,3 +46,27 @@ def test_empty_resume_text_skips_the_model():
     llm = fake("{}")
     assert extract_profile("   ", llm=llm) == empty_profile()
     assert llm.calls == []
+
+
+def test_short_university_names_are_written_in_full():
+    from core.profile import full_institution
+    assert full_institution("UiTM") == "Universiti Teknologi MARA (UiTM)"
+    assert full_institution("UITM Shah Alam") == "Universiti Teknologi MARA (UiTM) Shah Alam"
+    assert full_institution("UKM, Bangi") == "Universiti Kebangsaan Malaysia (UKM), Bangi"
+    assert full_institution("Universiti Teknologi MARA (UiTM), Tapah") == "Universiti Teknologi MARA (UiTM), Tapah"
+    assert full_institution("UMS") == "Universiti Malaysia Sabah (UMS)"
+    assert full_institution("Sunway University") == "Sunway University"
+
+
+def test_full_names_reach_the_resume_and_the_model():
+    import copy
+    from core.pack import build_pack
+    from core.render import resume_html
+    from tests.test_checker import GOOD, JOB, PROFILE
+    from tests.test_pack import scripted
+    profile = copy.deepcopy(PROFILE)
+    profile["education"][0]["institution"] = "UPM"
+    assert "Universiti Putra Malaysia (UPM)" in resume_html(profile, GOOD)
+    llm = scripted(copy.deepcopy(GOOD), {"untraceable": []})
+    build_pack(profile, JOB, [], llm=llm)
+    assert "Universiti Putra Malaysia (UPM)" in llm.prompts[0]

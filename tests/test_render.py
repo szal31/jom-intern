@@ -60,3 +60,23 @@ def test_no_line_starts_at_the_right_edge():
     for pdf in (resume_pdf(profile, GOOD)[0], letter_pdf(profile, JOB, GOOD)):
         stray = [t for x, t in _text_starts(pdf) if x > 540]  # A4 is 595pt wide; right margin starts near 553pt
         assert not stray, stray
+
+
+def _chunks(pdf_bytes):
+    import io
+    from pypdf import PdfReader
+    found = []
+    PdfReader(io.BytesIO(pdf_bytes)).pages[0].extract_text(visitor_text=lambda text, cm, tm, *_: found.append((round(tm[5]), tm[4], text)) if text.strip() else None)
+    return found
+
+
+def test_long_project_title_wraps_clear_of_its_date():
+    from tests.test_checker import GOOD, PROFILE
+    from core.render import resume_pdf
+    pack = copy.deepcopy(GOOD)
+    title = "Predicting Student Dropout Risk Using Ensemble Machine Learning Models on Ten Years of Malaysian University Records EndWord"
+    pack["resume"]["projects"] = [{"title": title, "dates": "Mar 2026 to Jul 2026", "bullets": ["Built it."]}]
+    chunks = _chunks(resume_pdf(PROFILE, pack)[0])
+    date_y = next(y for y, x, t in chunks if "Mar 2026 to Jul 2026" in t)
+    end_y = next(y for y, x, t in chunks if "EndWord" in t)
+    assert end_y != date_y  # the title went onto a second line instead of running under the date

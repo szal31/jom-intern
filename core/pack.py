@@ -4,7 +4,7 @@ import re
 
 from core.checker import check_pack
 from core.llm import LLMError, ask_json
-from core.profile import clean_items, clean_lines
+from core.profile import clean_items, clean_lines, with_full_institutions
 
 STYLE = (
     "Write in plain, formal English. No adverbs, no em dashes, active voice with the student as the subject, "
@@ -85,6 +85,7 @@ def _drop(pack: dict, flagged: list[str]) -> tuple[dict, list[str]]:
 
 def build_pack(profile: dict, job: dict, other_companies: list[str], llm=None, step=lambda message: None) -> tuple[dict, list[str]]:
     """Write, verify and check, retrying once with the problems; `step` hears each stage for a progress display."""
+    profile = with_full_institutions(profile)  # so the letter names "Universiti Teknologi MARA (UiTM)", not just "UiTM"
     problems = None
     for attempt in range(2):
         step("Writing your resume and letter" if attempt == 0 else "Fixing what the check found")
@@ -99,6 +100,7 @@ def build_pack(profile: dict, job: dict, other_companies: list[str], llm=None, s
 
 def rewrite_paragraph(paragraph: str, profile: dict, job: dict, how: str, llm=None) -> str:
     """Rewrite one letter paragraph as the student asks, still only from their profile."""
+    profile = with_full_institutions(profile)
     prompt = (
         "Rewrite this one cover letter paragraph. Use ONLY facts from the PROFILE. Never add employers, skills, numbers, "
         f"dates or achievements.\n{STYLE}\nInstruction: {how.strip() or 'make it clearer and more specific to this job'}\n"

@@ -7,6 +7,8 @@ import docx
 from docx.shared import Pt
 from fpdf import FPDF
 
+from core.profile import full_institution
+
 # shortcut: PDFs use the built-in Helvetica (Latin-1), so non-Latin names print as "?"; bundle a Unicode font if a student needs one.
 LATIN1 = str.maketrans({"’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-", "•": "-", "…": "..."})
 
@@ -35,7 +37,7 @@ def _resume_blocks(profile: dict, pack: dict) -> list[tuple[str, object]]:
     summary = " ".join(p for p in (resume.get("summary", ""), availability(profile)) if p)
     blocks = [("name", (profile.get("contact") or {}).get("name", "")), ("contact", _contact_line(profile)), ("text", summary)]
     education = [
-        {"title": e.get("institution", ""), "dates": e.get("dates", ""), "bullets": [" | ".join(x for x in (e.get("qualification"), e.get("grade")) if x)]}
+        {"title": full_institution(e.get("institution", "")), "dates": e.get("dates", ""), "bullets": [" | ".join(x for x in (e.get("qualification"), e.get("grade")) if x)]}
         for e in profile.get("education", [])
     ]
     sections = [("EDUCATION", education), ("EXPERIENCE", resume.get("experience", [])), ("SKILLS", resume.get("skills", [])),
@@ -104,10 +106,18 @@ def resume_pdf(profile: dict, pack: dict) -> tuple[bytes, int]:
             pdf.cell(width, 5, _latin(content), border="B", new_x="LMARGIN", new_y="NEXT")
             pdf.ln(0.5)
         elif kind == "entry":
-            pdf.set_font("Helvetica", "B", 9.5)
-            pdf.cell(width * 0.75, 4.8, _latin(content[0]))
             pdf.set_font("Helvetica", "", 9.5)
-            pdf.cell(width * 0.25, 4.8, _latin(content[1]), align="R", new_x="LMARGIN", new_y="NEXT")
+            date_width = pdf.get_string_width(_latin(content[1])) + 3
+            if pdf.get_y() + 9.6 > pdf.page_break_trigger:  # start a two-line title on a fresh page rather than split it from its date
+                pdf.add_page()
+            top = pdf.get_y()
+            pdf.set_font("Helvetica", "B", 9.5)  # the title wraps in the space the date leaves, so long titles never run into it
+            pdf.multi_cell(width - date_width, 4.8, _latin(content[0]), new_x="LMARGIN", new_y="NEXT")
+            bottom = pdf.get_y()
+            pdf.set_xy(pdf.l_margin + width - date_width, top)
+            pdf.set_font("Helvetica", "", 9.5)
+            pdf.cell(date_width, 4.8, _latin(content[1]), align="R")
+            pdf.set_xy(pdf.l_margin, bottom)
         elif kind == "bullet":
             pdf.set_font("Helvetica", "", 9.5)
             pdf.set_x(pdf.l_margin + 3)
