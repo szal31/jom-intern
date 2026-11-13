@@ -15,6 +15,10 @@ def friendly_error(error: Exception) -> str:
         return "Wrong email or password."
     if "already registered" in text:
         return "That email already has an account. Log in instead."
+    if "For security purposes" in text:  # same email again within 60 seconds: the first request already made the account and sent the email
+        return "We've already sent your confirmation email. Check your inbox and spam folder, click the link, then log in here."
+    if "rate limit exceeded" in text.lower():
+        return "Too many sign-ups in the last hour. Please try again in an hour."
     return "Something went wrong. Please try again in a minute."
 
 

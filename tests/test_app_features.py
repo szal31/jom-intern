@@ -99,3 +99,18 @@ def test_recommended_tab_shows_when_there_are_jobs(monkeypatch):
     log_in(app)
     app.radio(key="page").set_value("Internships").run(timeout=30)
     assert [t.label for t in app.tabs] == ["Recommended", "Paste my own"]
+
+
+def test_repeat_signup_says_the_email_was_already_sent(monkeypatch):
+    """A second click while the first sign-up is still sending hits Supabase's 60-second limit; the account and email already exist."""
+    from core import db
+    from core.db import friendly_error
+    error = Exception("For security purposes, you can only request this after 47 seconds.")
+    assert "already sent" in friendly_error(error)
+    assert "hour" in friendly_error(Exception("email rate limit exceeded"))
+    app, _ = start(monkeypatch)
+    monkeypatch.setattr(db, "sign_up", lambda _db, email, password: (_ for _ in ()).throw(error))
+    app.tabs[1].text_input[0].input("friend@example.com")
+    app.tabs[1].text_input[1].input("secret123")
+    by_label(app.button, "Create account").click().run(timeout=30)
+    assert any("already sent" in e.value for e in app.error)

@@ -115,7 +115,8 @@ def login_page():
             email, password = st.text_input("Email"), st.text_input("Password (8+ characters)", type="password")
             if st.form_submit_button("Create account", type="primary"):
                 try:
-                    result = db.sign_up(state.db, email, password)
+                    with st.spinner("Creating your account and sending the confirmation email. This takes about 10 seconds..."):
+                        result = db.sign_up(state.db, email, password)
                     if result.session:
                         state.user = result.user
                         st.rerun()
