@@ -1,6 +1,5 @@
-# Hallmark · redesign: full · scope: app · shape: app screen · theme: werkstatt (dealt 2/3, seed jom-intern-malaysian-university-d719·4b5faeba·2026-11-12·r0) · werkstatt: putty · palette, faces, rules and radius
-# critique: a printed prospectus pinned to the faculty wall; capitals and boxed cells carry the voice, the three primaries code application status only
-# answered 48: Streamlit has no :root here, so this block is the token set for widgets; assets/jom.css declares the same tokens at :root for everything else
+# Neutral light and dark themes, Apple-style system type. Visitors switch in the app menu; the default follows the device setting.
+# Glass controls and the sliding nav pill live in assets/jom.css.
 
 [browser]
 gatherUsageStats = false
@@ -9,26 +8,45 @@ gatherUsageStats = false
 toolbarMode = "viewer"
 
 [theme]
-base = "light"
-primaryColor = "#14110E"
-backgroundColor = "#D2C9B9"
-secondaryBackgroundColor = "#E2DCCF"
-textColor = "#14110E"
-linkColor = "#14110E"
-borderColor = "#14110E"
-showWidgetBorder = true
-baseRadius = "none"
-buttonRadius = "none"
+font = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
+headingFont = "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
+headingFontWeights = [650, 650, 600, 600, 600, 600]
+codeFont = "ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
 baseFontSize = 16
-font = "Karla:https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&display=swap, sans-serif"
-headingFont = "Jost:https://fonts.googleapis.com/css2?family=Jost:wght@700&display=swap, Futura, sans-serif"
-headingFontWeights = [700, 700, 700, 700, 700, 700]
-codeFont = "monospace"
-blueColor = "#1949C5"
-redColor = "#B71C07"
-yellowColor = "#F4C929"
-dataframeHeaderBackgroundColor = "#C6BBA8"
+baseRadius = "12px"
+buttonRadius = "full"
+showWidgetBorder = true
 
-[theme.sidebar]
-backgroundColor = "#C6BBA8"
-secondaryBackgroundColor = "#E2DCCF"
+[theme.light]
+primaryColor = "#1D1D1F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F7"
+textColor = "#1D1D1F"
+linkColor = "#0066CC"
+borderColor = "#8E8E93"
+blueColor = "#0066CC"
+greenColor = "#1E7F3C"
+orangeColor = "#B25000"
+redColor = "#D70015"
+dataframeHeaderBackgroundColor = "#F5F5F7"
+
+[theme.light.sidebar]
+backgroundColor = "#F5F5F7"
+secondaryBackgroundColor = "#FFFFFF"
+
+[theme.dark]
+primaryColor = "#F5F5F7"
+backgroundColor = "#111113"
+secondaryBackgroundColor = "#1C1C1E"
+textColor = "#F5F5F7"
+linkColor = "#2997FF"
+borderColor = "#7C7C80"
+blueColor = "#2997FF"
+greenColor = "#30D158"
+orangeColor = "#FF9F0A"
+redColor = "#FF453A"
+dataframeHeaderBackgroundColor = "#1C1C1E"
+
+[theme.dark.sidebar]
+backgroundColor = "#1C1C1E"
+secondaryBackgroundColor = "#2C2C2E"

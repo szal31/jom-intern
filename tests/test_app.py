@@ -52,3 +52,9 @@ def test_full_flow_with_fakes(monkeypatch):
 def by_label(widgets, label):
     return next(w for w in widgets if w.label == label)
 
+
+
+def test_stylesheet_survives_streamlits_html_sanitiser():
+    """st.html drops a style block that contains a literal '<', silently unstyling the whole app."""
+    css = (Path(__file__).parent.parent / "assets" / "jom.css").read_text(encoding="utf-8")
+    assert "<" not in css

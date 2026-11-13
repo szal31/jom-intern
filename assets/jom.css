@@ -1,68 +1,133 @@
-/* Hallmark · redesign: full · scope: app · shape: app screen · theme: werkstatt (dealt 2/3) · werkstatt: putty · signature: the pack as a ruled entry, status coded in the primaries */
-/* critique: a faculty prospectus; heads in Jost capitals, facts boxed in 3px ink cells, blue applied, yellow interview, red offer, nothing else coloured */
-/* answered 34: Streamlit owns html and body; overflow-x clip set on both below */
-/* shortcut: selectors use Streamlit data-testid and st-key classes, which can change between Streamlit releases; recheck after upgrading */
+/* Jom Intern! · neutral light and dark, glass controls, a sliding liquid-glass pill in the nav and tabs.
+   Every tint is derived from --ink (the active theme's text colour), so one stylesheet serves both modes.
+   shortcut: selectors use Streamlit data-testid, data-selected and react-aria classes, which can change between Streamlit releases; recheck after upgrading.
+   shortcut: relative colour syntax needs Chrome 119+, Safari 18+ or Firefox 128+; older browsers fall back to Streamlit's own colours. */
 
-:root {
-  --color-paper: #D2C9B9; --color-paper-2: #C6BBA8; --color-paper-3: #E2DCCF;
-  --color-ink: #14110E; --color-ink-2: #2A2522; --color-muted: #4B433E; --color-rule: #83786C;
-  --color-accent: #1949C5; --color-accent-2-deep: #B71C07; --color-accent-3: #F4C929; --color-accent-ink: #F6F1E9;
-  --color-focus: #1949C5;
-  --font-display: "Jost", "Futura", sans-serif; --font-body: "Karla", ui-sans-serif, system-ui, sans-serif;
-  --rule-hair: 1px; --rule-bar: 2px; --rule-box: 3px;
+/* The syntax string is "color" in angle brackets, written as CSS escapes: Streamlit's HTML sanitiser drops a style block containing a literal angle bracket. */
+@property --ink { syntax: "\3c color\3e"; inherits: true; initial-value: #1d1d1f; }
+
+.stApp {
+  --ink: currentColor;                                   /* computed here: #1D1D1F in light, #F5F5F7 in dark */
+  --paper: oklch(from var(--ink) calc(1 - clamp(0, (l - 0.5) * 100, 1) * 0.93) 0 0);
+  --raised: oklch(from var(--ink) calc(1 - clamp(0, (l - 0.5) * 100, 1) * 0.66) 0 0);
+  --muted: color-mix(in oklab, var(--ink) 62%, var(--paper));
+  --hair: color-mix(in oklab, var(--ink) 12%, transparent);
+  --glass: color-mix(in oklab, var(--raised) 68%, transparent);
+  --glass-hover: color-mix(in oklab, var(--raised) 86%, transparent);
+  --specular: oklch(from var(--ink) 1 0 0 / calc(0.7 - clamp(0, (l - 0.5) * 100, 1) * 0.56));
+  --shade: oklch(from var(--ink) 0 0 0 / calc(0.07 + clamp(0, (l - 0.5) * 100, 1) * 0.38));
+  --focus: #0A84FF;
+  --c-applied: #0A84FF; --c-interview: #FF9F0A; --c-offer: #30D158;
+  --spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --row: 2.5rem;
 }
 
 html, body { overflow-x: clip; }
 
-/* Heads: capitals are the material */
-h1, h2, h3, h4 { text-transform: uppercase; letter-spacing: -0.005em; line-height: 1.02; overflow-wrap: break-word; min-width: 0; font-family: var(--font-display); }
-h1 { font-size: clamp(2.25rem, 5vw, 3.5rem) !important; }
+/* Type: sentence case, tight display tracking */
+h1, h2, h3 { letter-spacing: -0.025em; overflow-wrap: break-word; min-width: 0; }
+h1 { font-size: clamp(2.25rem, 4.5vw, 3rem) !important; letter-spacing: -0.035em; }
 
-/* Controls: square, ink-ruled, Karla capitals */
-[data-testid^="stBaseButton"] { border: var(--rule-bar) solid var(--color-ink) !important; border-radius: 0 !important; text-transform: uppercase; font-weight: 600; letter-spacing: 0; min-height: 2.5rem; font-family: var(--font-body); }
-[data-testid="stBaseButton-headerNoPadding"] { border: 0 !important; }
-[data-baseweb="input"], [data-baseweb="textarea"], [data-baseweb="select"] > div, [data-testid="stFileUploaderDropzone"] { border: var(--rule-bar) solid var(--color-ink) !important; border-radius: 0 !important; }
-[data-baseweb="tab-list"] { border-bottom: var(--rule-bar) solid var(--color-ink); gap: 1.5rem; }
-[data-baseweb="tab"] { font-weight: 600; }
-
-/* Boxes: a cell is what the rules enclose */
-[data-testid="stExpander"] details { border: var(--rule-box) solid var(--color-ink) !important; border-radius: 0 !important; background: transparent; }
-[data-testid="stExpander"] summary { font-weight: 600; }
-[data-testid="stForm"], .st-key-uploadbox { border: var(--rule-box) solid var(--color-ink) !important; border-radius: 0 !important; }
-[data-testid="stSidebar"] { border-right: var(--rule-box) solid var(--color-ink); }
-[data-testid="stProgress"] > div > div { border-radius: 0 !important; }
-
-/* Figures in boxed cells */
-.jom-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--rule-box); background: var(--color-ink); border: var(--rule-box) solid var(--color-ink); margin: 0 0 1.5rem; }
-.jom-cell { padding: 0.75rem 1rem 0.875rem; background: var(--color-paper); min-width: 0; }
-@media (max-width: 40rem) { .jom-cells { grid-template-columns: minmax(0, 1fr); } .jom-cell b { font-size: 1.75rem; } }
-.jom-cell b { display: block; font-family: var(--font-display); font-weight: 700; font-size: 2.25rem; line-height: 1; text-transform: uppercase; font-variant-numeric: tabular-nums; }
-.jom-cell span { display: block; margin-top: 0.375rem; font-weight: 600; font-size: 0.9375rem; color: var(--color-muted); }
-
-/* Status: each primary codes one stage, the same one everywhere */
-.jom-status { display: inline-block; padding: 0.125rem 0.625rem; border: var(--rule-bar) solid var(--color-ink); font-weight: 600; font-size: 0.875rem; text-transform: uppercase; }
-.jom-status--applied { background: var(--color-accent); color: var(--color-accent-ink); }
-.jom-status--interview { background: var(--color-accent-3); color: var(--color-ink); }
-.jom-status--offer { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
-.jom-status--rejected { background: var(--color-paper-2); color: var(--color-ink); }
-.jom-status--ready { background: transparent; color: var(--color-ink); }
-.jom-meta { color: var(--color-muted); font-size: 0.9375rem; margin-left: 0.5rem; }
-
-/* Focus appears instantly, in the focus blue */
-a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [role="tab"]:focus-visible, [role="radio"]:focus-visible, summary:focus-visible { outline: 3px solid var(--color-focus) !important; outline-offset: 2px; transition: none !important; }
-
-/* Links: a 2px ink underline that thickens on hover, the only motion */
-a { text-decoration-thickness: 2px; text-underline-offset: 3px; }
-a:hover { text-decoration-thickness: 3px; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+/* Glass buttons */
+[data-testid^="stBaseButton-secondary"], [data-testid="stBaseButton-secondaryFormSubmit"] {
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%); backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid var(--hair) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 0 1px 0 var(--specular), 0 1px 2px var(--shade), 0 8px 20px -10px var(--shade);
 }
+[data-testid^="stBaseButton-secondary"]:hover, [data-testid="stBaseButton-secondaryFormSubmit"]:hover { background: var(--glass-hover) !important; }
+/* --ink stays the keyword currentcolor, so the button keeps the page's text colour (its fill) and only the label turns to paper */
+[data-testid^="stBaseButton-primary"] {
+  color: inherit !important; background: currentColor !important; border: 1px solid currentColor !important;
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.22), 0 1px 2px var(--shade), 0 10px 24px -12px var(--shade);
+}
+[data-testid^="stBaseButton-primary"] p { color: var(--paper) !important; font-weight: 600; }
+[data-testid^="stBaseButton-secondary"] p { color: inherit !important; font-weight: 600; }
+[data-testid^="stBaseButton-primary"], [data-testid^="stBaseButton-secondary"] {
+  min-height: 2.5rem; padding-inline: 1.125rem;
+  transition: background-color 200ms var(--ease-out), box-shadow 200ms var(--ease-out), scale 350ms var(--spring);
+}
+[data-testid^="stBaseButton-primary"]:active, [data-testid^="stBaseButton-secondary"]:active { scale: 0.96; }
 
-/* The one blue field: the sign-in masthead */
-.jom-band { background: var(--color-accent); color: var(--color-accent-ink); border: var(--rule-box) solid var(--color-ink); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 4vw, 2.5rem); margin-bottom: 0; }
-.jom-band h1 { color: var(--color-accent-ink); margin: 0 0 0.75rem; padding: 0; font-size: clamp(2.75rem, 8vw, 4.5rem) !important; }
-.jom-band p { margin: 0; font-size: 1.125rem; max-width: 36ch; }
-[data-baseweb="tab-highlight"] { background-color: var(--color-ink) !important; height: var(--rule-bar) !important; }
-[data-baseweb="tab-border"] { background-color: var(--color-ink) !important; height: var(--rule-bar) !important; }
-.st-key-uploadbox { padding: 1rem 1.25rem; }
+/* Sidebar nav: the options become rows, one glass pill slides to the selected row */
+[data-testid="stSidebar"] [role="radiogroup"] { position: relative; gap: 0 !important; isolation: isolate; }
+[data-testid="stSidebar"] [role="radiogroup"] > div { position: relative; z-index: 1; }
+[data-testid="stSidebar"] [data-testid="stRadioOption"] { min-height: var(--row); width: 100%; padding: 0 0.75rem; display: flex; align-items: center; border-radius: 999px; cursor: pointer; }
+[data-testid="stSidebar"] [data-testid="stRadioOption"] > div > div:not([data-testid="stMarkdownContainer"]) { display: none; }
+[data-testid="stSidebar"] [data-testid="stRadioOption"] p { font-weight: 500; }
+[data-testid="stSidebar"] [role="radiogroup"]::before {
+  content: ""; position: absolute; z-index: 0; inset: 0 0 auto 0; height: var(--row); border-radius: 999px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid var(--hair);
+  box-shadow: inset 0 1px 0 var(--specular), inset 0 -1px 0 var(--hair), 0 2px 6px var(--shade), 0 10px 24px -12px var(--shade);
+  transition: translate 520ms var(--spring);
+  animation: 520ms var(--ease-out) both;
+}
+[data-testid="stSidebar"] [role="radiogroup"]:has(> div:nth-child(1)[data-selected="true"])::before { translate: 0 0; animation-name: jom-liquid-1; }
+[data-testid="stSidebar"] [role="radiogroup"]:has(> div:nth-child(2)[data-selected="true"])::before { translate: 0 calc(1 * var(--row)); animation-name: jom-liquid-2; }
+[data-testid="stSidebar"] [role="radiogroup"]:has(> div:nth-child(3)[data-selected="true"])::before { translate: 0 calc(2 * var(--row)); animation-name: jom-liquid-3; }
+[data-testid="stSidebar"] [role="radiogroup"]:has(> div:nth-child(4)[data-selected="true"])::before { translate: 0 calc(3 * var(--row)); animation-name: jom-liquid-4; }
+[data-testid="stSidebar"] [role="radiogroup"]:has(> div:nth-child(5)[data-selected="true"])::before { translate: 0 calc(4 * var(--row)); animation-name: jom-liquid-5; }
+[data-testid="stSidebar"] [role="radiogroup"]:has(> div:nth-child(6)[data-selected="true"])::before { translate: 0 calc(5 * var(--row)); animation-name: jom-liquid-6; }
+/* One keyframe set under six names, so the stretch replays on every move */
+@keyframes jom-liquid-1 { 0%, 100% { scale: 1 1; } 30% { scale: 0.94 1.22; } 62% { scale: 1.03 0.94; } }
+@keyframes jom-liquid-2 { 0%, 100% { scale: 1 1; } 30% { scale: 0.94 1.22; } 62% { scale: 1.03 0.94; } }
+@keyframes jom-liquid-3 { 0%, 100% { scale: 1 1; } 30% { scale: 0.94 1.22; } 62% { scale: 1.03 0.94; } }
+@keyframes jom-liquid-4 { 0%, 100% { scale: 1 1; } 30% { scale: 0.94 1.22; } 62% { scale: 1.03 0.94; } }
+@keyframes jom-liquid-5 { 0%, 100% { scale: 1 1; } 30% { scale: 0.94 1.22; } 62% { scale: 1.03 0.94; } }
+@keyframes jom-liquid-6 { 0%, 100% { scale: 1 1; } 30% { scale: 0.94 1.22; } 62% { scale: 1.03 0.94; } }
+
+/* Tabs: a glass track with the same pill behind the selected tab */
+[data-testid="stTabs"] [role="tablist"] {
+  display: inline-flex; gap: 0.25rem; padding: 0.25rem; border-radius: 999px; border: 1px solid var(--hair);
+  background: color-mix(in oklab, var(--ink) 5%, transparent); width: fit-content; max-width: 100%;
+}
+[data-testid="stTab"] { position: relative; isolation: isolate; border-radius: 999px; padding: 0.375rem 1rem !important; min-height: 2.25rem; }
+[data-testid="stTab"] p { font-weight: 600; position: relative; z-index: 1; }
+[data-testid="stTab"] .react-aria-SelectionIndicator {
+  position: absolute; inset: 0; z-index: 0; height: auto !important; border-radius: 999px;
+  background: var(--glass-hover) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%);
+  border: 1px solid var(--hair);
+  box-shadow: inset 0 1px 0 var(--specular), 0 2px 6px var(--shade), 0 8px 20px -10px var(--shade);
+  transition: translate 480ms var(--spring), width 480ms var(--spring);
+  animation: jom-pop 480ms var(--spring);
+}
+@keyframes jom-pop { 0% { scale: 0.86 0.7; opacity: 0.4; } 55% { scale: 1.06 1.04; opacity: 1; } 100% { scale: 1 1; } }
+
+/* Fields and boxes: soft radius, hairline edges */
+[data-testid="stExpander"] details { border-radius: 18px !important; border: 1px solid var(--hair) !important; background: color-mix(in oklab, var(--raised) 40%, transparent); box-shadow: 0 1px 2px var(--shade); }
+[data-testid="stForm"], .st-key-uploadbox { border-radius: 20px !important; border: 1px solid var(--hair) !important; padding: 1.25rem; box-shadow: 0 1px 2px var(--shade), 0 12px 32px -18px var(--shade); }
+[data-testid="stProgressBarTrack"], [data-testid="stProgressBarTrack"] > div { border-radius: 999px !important; }
+
+/* Login masthead and figures */
+.jom-hero { padding: 0.5rem 0 1.5rem; }
+.jom-hero h1 { margin: 0 0 0.5rem; padding: 0; font-size: clamp(2.75rem, 7vw, 4rem) !important; font-weight: 700; letter-spacing: -0.045em; line-height: 1.02; }
+.jom-hero p { margin: 0; font-size: 1.25rem; line-height: 1.4; color: var(--muted); max-width: 32ch; }
+.jom-cells { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin: 0 0 1.75rem; }
+.jom-cell { padding: 1rem 1.125rem; border-radius: 18px; border: 1px solid var(--hair); background: var(--glass); box-shadow: inset 0 1px 0 var(--specular), 0 1px 2px var(--shade); min-width: 0; }
+.jom-cell b { display: block; font-size: 1.875rem; font-weight: 650; letter-spacing: -0.03em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.jom-cell span { display: block; margin-top: 0.25rem; font-size: 0.9375rem; color: var(--muted); }
+@media (max-width: 40rem) { .jom-cells { grid-template-columns: minmax(0, 1fr); } }
+
+/* Status: a tinted pill per stage, text mixed toward the ink so it reads in both modes */
+.jom-status { display: inline-block; padding: 0.125rem 0.75rem; border-radius: 999px; font-weight: 600; font-size: 0.875rem; border: 1px solid var(--hair); }
+.jom-status--applied { background: color-mix(in oklab, var(--c-applied) 16%, transparent); color: color-mix(in oklab, var(--c-applied) 50%, var(--ink)); border-color: color-mix(in oklab, var(--c-applied) 35%, transparent); }
+.jom-status--interview { background: color-mix(in oklab, var(--c-interview) 18%, transparent); color: color-mix(in oklab, var(--c-interview) 50%, var(--ink)); border-color: color-mix(in oklab, var(--c-interview) 40%, transparent); }
+.jom-status--offer { background: color-mix(in oklab, var(--c-offer) 18%, transparent); color: color-mix(in oklab, var(--c-offer) 50%, var(--ink)); border-color: color-mix(in oklab, var(--c-offer) 40%, transparent); }
+.jom-status--rejected { background: color-mix(in oklab, var(--ink) 8%, transparent); color: var(--muted); }
+.jom-status--ready { background: transparent; color: var(--ink); }
+.jom-meta { color: var(--muted); font-size: 0.9375rem; margin-left: 0.5rem; }
+
+/* Focus appears instantly */
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [role="tab"]:focus-visible, [data-testid="stRadioOption"]:has(input:focus-visible), summary:focus-visible { outline: 3px solid var(--focus) !important; outline-offset: 2px; transition: none !important; }
+
+@media (prefers-reduced-transparency: reduce) {
+  [data-testid^="stBaseButton-secondary"], [data-testid="stSidebar"] [role="radiogroup"]::before, [data-testid="stTab"] .react-aria-SelectionIndicator, .jom-cell { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--raised) !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}

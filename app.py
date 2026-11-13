@@ -76,7 +76,7 @@ def profile_steps(profile):
 
 
 def login_page():
-    st.html('''<div class="jom-band"><h1>Jom Intern!</h1>
+    st.html('''<div class="jom-hero"><h1>Jom Intern!</h1>
       <p>Turn your resume into a tailored resume and cover letter for each internship.</p></div>''')
     seats = db.seats_left(state.db)
     st.html(f'''<div class="jom-cells">
