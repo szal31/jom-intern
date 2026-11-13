@@ -55,17 +55,17 @@ grant insert on public.events to authenticated;
 grant select on public.jobs to authenticated;
 grant all on public.profiles, public.packs, public.usage, public.events, public.jobs to service_role;
 
--- At most 11 accounts: Sanad (admin) plus 10 students.
+-- At most 11 accounts: Sanad (admin) plus 10 students. Unconfirmed sign-ups hold a place for one day only.
 create function public.pilot_seats_left() returns int
 language sql security definer set search_path = '' as $$
-  select greatest(0, 11 - (select count(*)::int from auth.users));
+  select greatest(0, 11 - (select count(*)::int from auth.users where email_confirmed_at is not null or created_at > now() - interval '1 day'));
 $$;
 grant execute on function public.pilot_seats_left() to anon, authenticated;
 
 create function public.enforce_pilot_cap() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  if (select count(*) from auth.users) >= 11 then
+  if (select count(*) from auth.users where email_confirmed_at is not null or created_at > now() - interval '1 day') >= 11 then
     raise exception 'pilot_full';
   end if;
   return new;

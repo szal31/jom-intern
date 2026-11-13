@@ -1,6 +1,7 @@
 """Write a tailored resume and cover letter from a student's own profile."""
 import json
 import re
+from difflib import SequenceMatcher
 
 from core.checker import check_pack
 from core.llm import LLMError, ask_json
@@ -83,13 +84,27 @@ def _drop(pack: dict, flagged: list[str]) -> tuple[dict, list[str]]:
     return pack, [targets[t] for t in targets if t not in found]
 
 
+def _pin_to_profile(pack: dict, profile: dict) -> dict:
+    """Titles and dates come from the profile, never the model: each entry is matched to its profile entry, and entries that match none are dropped."""
+    for section in ("experience", "projects", "leadership"):
+        originals = profile.get(section) or []
+        kept = []
+        for item in pack["resume"].get(section, []):
+            score, match = max(((SequenceMatcher(None, _norm(item.get("title", "")), _norm(o.get("title", ""))).ratio(), o) for o in originals),
+                               default=(0, None), key=lambda pair: pair[0])
+            if match and score >= 0.85:
+                kept.append({**item, "title": match.get("title", ""), "dates": match.get("dates", "")})
+        pack["resume"][section] = kept
+    return pack
+
+
 def build_pack(profile: dict, job: dict, other_companies: list[str], llm=None, step=lambda message: None) -> tuple[dict, list[str]]:
     """Write, verify and check, retrying once with the problems; `step` hears each stage for a progress display."""
     profile = with_full_institutions(profile)  # so the letter names "Universiti Teknologi MARA (UiTM)", not just "UiTM"
     problems = None
     for attempt in range(2):
         step("Writing your resume and letter" if attempt == 0 else "Fixing what the check found")
-        pack = write_pack(profile, job, llm=llm, problems=problems)
+        pack = _pin_to_profile(write_pack(profile, job, llm=llm, problems=problems), profile)
         step("Checking every line against your profile")
         pack, missed = _drop(pack, verify_pack(pack, profile, llm=llm))
         problems = check_pack(pack, profile, job, other_companies) + [f"A flagged line couldn't be removed: {m}" for m in missed]

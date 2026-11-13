@@ -1,8 +1,10 @@
 """Jom Intern!: a tailored, checked resume and cover letter for each internship."""
 import copy
+import hmac
 import html
 import json
 import os
+import time
 from pathlib import Path
 from datetime import date
 
@@ -34,7 +36,7 @@ try:
     secrets = dict(st.secrets)
 except Exception:  # no secrets file yet: fall through to the "not set up" message
     secrets = {}
-for name in SECRETS + ["GEMINI_MODEL", "USE_FAKE_LLM"]:
+for name in SECRETS + ["GEMINI_MODEL", "USE_FAKE_LLM", "INVITE_CODE"]:
     if name not in os.environ and name in secrets:
         os.environ[name] = str(secrets[name])
 missing = [n for n in SECRETS if not os.environ.get(n)]
@@ -56,6 +58,7 @@ if not state.user and not state.get("cookie_checked"):  # a reload starts a new 
     if token:
         try:
             state.user = db.restore(state.db, token)
+            state.remember_until = remember.read_until()  # keeps the original 7-day limit, not a fresh one
         except Exception:
             state.forget_cookie = True
 SETUP = ["Upload your resume", "Check your details", "Add your stories", "Your internship window"]
@@ -99,9 +102,11 @@ def login_page():
     log_in, sign_up = st.container(key="loginforms").tabs(["Log in", "Sign up"])
     with log_in, st.form("login"):
         email, password = st.text_input("Email"), st.text_input("Password", type="password")
+        keep = st.checkbox("Keep me logged in on this device for 7 days", help="Leave this off on shared or lab computers.")
         if st.form_submit_button("Log in", type="primary"):
             try:
                 state.user = db.sign_in(state.db, email, password)
+                state.remember_until = time.time() + remember.WEEK if keep else None
                 st.rerun()
             except Exception as error:
                 st.error(db.friendly_error(error))
@@ -113,7 +118,11 @@ def login_page():
         st.caption(f"{seats} of 10 places left.")
         with st.form("signup"):
             email, password = st.text_input("Email"), st.text_input("Password (8+ characters)", type="password")
+            invite = st.text_input("Invite code", help="Ask Sanad for the pilot's invite code.") if os.environ.get("INVITE_CODE") else ""
             if st.form_submit_button("Create account", type="primary"):
+                if os.environ.get("INVITE_CODE") and not hmac.compare_digest(invite.strip(), os.environ["INVITE_CODE"]):
+                    st.error("That invite code isn't right. Ask Sanad for the pilot's code.")
+                    return
                 try:
                     with st.spinner("Creating your account and sending the confirmation email. This takes about 10 seconds..."):
                         result = db.sign_up(state.db, email, password)
@@ -547,8 +556,8 @@ try:  # the refresh token rotates; keep the browser's copy current so a reload l
     token = db.session_token(state.db)
 except Exception:
     token = None
-if token and token != state.get("saved_token"):
-    remember.write(token)
+if token and state.get("remember_until") and token != state.get("saved_token"):
+    remember.write(token, state.remember_until)
     state.saved_token = token
 with st.container(key="topbar", horizontal=True, horizontal_alignment="distribute", vertical_alignment="center", wrap=False):
     st.html('<p class="jom-brand">Jom Intern!</p>', width="content")

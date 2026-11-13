@@ -1,3 +1,5 @@
+import time
+
 from streamlit.testing.v1 import AppTest
 
 from core import remember
@@ -15,12 +17,15 @@ def start(monkeypatch, profile=None, cookie=None):
     if profile is not None:
         store["profiles"]["u1"] = {"data": profile, "consent_at": "now"}
     monkeypatch.setattr(remember, "read", lambda: cookie)
+    monkeypatch.setattr(remember, "read_until", lambda: time.time() + 3600 if cookie else None)
     return AppTest.from_file("../app.py").run(timeout=30), store
 
 
-def log_in(app):
+def log_in(app, keep=False):
     app.text_input[0].input("student@example.com")
     app.text_input[1].input("secret123")
+    if keep:
+        app.checkbox[0].check()
     app.button[0].click().run(timeout=30)
 
 
@@ -41,10 +46,30 @@ def test_stale_cookie_shows_the_login_page_and_clears_it(monkeypatch):
     assert "Max-Age=0" in html_of(app)
 
 
-def test_logged_in_session_writes_the_cookie(monkeypatch):
+def test_keep_me_logged_in_writes_the_cookie_only_when_ticked(monkeypatch):
     app, _ = start(monkeypatch, profile=dict(PROFILE, setup_done=True))
     log_in(app)
+    assert "jom_session=" not in html_of(app)
+    app, _ = start(monkeypatch, profile=dict(PROFILE, setup_done=True))
+    log_in(app, keep=True)
     assert "jom_session=fresh-token" in html_of(app)
+
+
+def test_sign_up_needs_the_invite_code_when_one_is_set(monkeypatch):
+    from core import db
+    app, _ = start(monkeypatch)
+    monkeypatch.setenv("INVITE_CODE", "JOM2027")
+    calls = []
+    monkeypatch.setattr(db, "sign_up", lambda _db, email, password: calls.append(email) or type("R", (), {"session": None})())
+    app.run(timeout=30)
+    app.tabs[1].text_input[0].input("friend@example.com")
+    app.tabs[1].text_input[1].input("secret123")
+    app.tabs[1].text_input[2].input("wrong")
+    by_label(app.button, "Create account").click().run(timeout=30)
+    assert calls == [] and any("invite code" in e.value for e in app.error)
+    app.tabs[1].text_input[2].input("JOM2027")
+    by_label(app.button, "Create account").click().run(timeout=30)
+    assert calls == ["friend@example.com"]
 
 
 def test_nav_is_at_the_top_not_in_a_sidebar(monkeypatch):

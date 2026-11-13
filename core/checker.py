@@ -57,12 +57,15 @@ def _resume_lines(resume: dict) -> list[str]:
 
 def check_pack(pack: dict, profile: dict, job: dict, other_companies: list[str]) -> list[str]:
     facts = _facts(profile)
-    allowed, percent = _numbers(facts + json.dumps(job, ensure_ascii=False))
+    resume_numbers = _numbers(facts)  # resume lines state the student's own facts, so the posting's numbers don't count
+    letter_numbers = _numbers(facts + json.dumps(job, ensure_ascii=False))
     resume, letter = pack.get("resume", {}), pack.get("letter", [])
     problems = []
 
     letter_text = "\n".join(letter)
-    if letter:
+    if not letter_text.strip():
+        problems.append("The letter is empty. Make the pack again, or write the letter in Edit.")
+    else:
         if not contains(letter_text, job.get("company", "")):
             problems.append(f"Letter doesn't name the company: {job.get('company')}")
         if not contains(letter_text, job.get("role", "")):
@@ -70,19 +73,22 @@ def check_pack(pack: dict, profile: dict, job: dict, other_companies: list[str])
 
     for section in ("experience", "projects", "leadership"):
         for item in resume.get(section, []):
-            if item.get("title") and normalize(item["title"]) not in normalize(facts):
+            if item.get("title") and not contains(facts, item["title"]):
                 problems.append(f"Resume {section} isn't in your profile: {item['title']}")
+            if not [b for b in item.get("bullets", []) if b.strip()]:
+                problems.append(f"Resume {section} entry has no bullets: {item.get('title', '')}")
     for skill in resume.get("skills", []):
         for piece in re.split(r"[,;()]", skill.partition(":")[2] or skill):
-            if piece.strip() and normalize(piece.strip()) not in normalize(facts):
+            if piece.strip() and not contains(facts, piece.strip()):
                 problems.append(f"Skill isn't in your profile: {piece.strip()}")
 
     window = profile.get("window") or {}
     start, end = _parse_day(window.get("start", "")), _parse_day(window.get("end", ""))
     allowed_weeks = set(re.findall(r"\d+", window.get("weeks", "")))
-    others = [c for c in other_companies if c and not contains(job.get("company", ""), c) and not contains(c, job.get("company", ""))]
+    own = json.dumps([profile.get(s) for s in ("experience", "education", "leadership")], ensure_ascii=False)  # where the student worked or studied is theirs to name
+    others = [c for c in other_companies if c and not contains(job.get("company", ""), c) and not contains(c, job.get("company", "")) and not contains(own, c)]
 
-    for name, lines in (("Resume", _resume_lines(resume)), ("Letter", letter)):
+    for name, lines, (allowed, percent) in (("Resume", _resume_lines(resume), resume_numbers), ("Letter", letter, letter_numbers)):
         for line in lines:
             for company in others:
                 if contains(line, company) and not (contains(facts, company) and OWN_FACT.search(line)):
