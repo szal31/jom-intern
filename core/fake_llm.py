@@ -12,6 +12,8 @@ def fake_llm(prompt: str) -> str:
         })
     if prompt.startswith("Check every resume bullet"):
         return json.dumps({"untraceable": []})
+    if prompt.startswith("Rewrite this one"):
+        return json.dumps({"paragraph": "I built a sales report in Power BI, and I would bring that care to this team."})
     job = json.loads(prompt.rsplit("JOB:\n", 1)[1])
     return json.dumps({
         "resume": {"summary": "Mathematics student who builds clear reports.", "skills": ["Analytics: Power BI, Excel"], "experience": [],

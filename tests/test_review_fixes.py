@@ -22,6 +22,9 @@ def logged_in_app(monkeypatch, profile=None):
     app.text_input[0].input("student@example.com")
     app.text_input[1].input("secret123")
     app.button[0].click().run(timeout=30)
+    skip = [b for b in app.button if b.label == "Skip setup"]
+    if skip:
+        skip[0].click().run(timeout=30)
     return app, store
 
 
@@ -95,7 +98,7 @@ def test_my_packs_downloads_nothing_until_asked(monkeypatch):
     store["packs"] = [{"id": "p0", "company": "Acme", "role": "Intern", "status": "Ready", "notes": "", "created_at": "2026-11-12", "files": {"resume.pdf": "u1/p0/resume.pdf"}}]
     store["files"]["u1/p0/resume.pdf"] = b"%PDF"
     monkeypatch.setattr(db, "download", lambda _db, path: calls.append(path) or store["files"][path])
-    app.sidebar.radio[0].set_value("My packs").run(timeout=30)
+    app.radio(key="page").set_value("My packs").run(timeout=30)
     assert calls == []
 
 
@@ -103,7 +106,7 @@ def test_admin_email_match_ignores_case(monkeypatch):
     app, _ = logged_in_app(monkeypatch)
     monkeypatch.setenv("ADMIN_EMAIL", "Student@Example.com")
     app.run(timeout=30)
-    assert any(o.endswith("Admin") for o in app.sidebar.radio[0].options)
+    assert any(o.endswith("Admin") for o in app.radio(key="page").options)
 
 
 def test_remove_story_keeps_the_right_one(monkeypatch):
@@ -117,8 +120,8 @@ def test_remove_story_keeps_the_right_one(monkeypatch):
 def test_clean_pack_from_paste_form_does_not_crash(monkeypatch):
     import core.pack
     app, store = logged_in_app(monkeypatch, {**empty_profile(), "contact": {"name": "Jane Tan", "email": "j@example.com"}})
-    monkeypatch.setattr(core.pack, "build_pack", lambda profile, job, others, llm=None: (copy.deepcopy(GOOD), []))
-    app.sidebar.radio[0].set_value("Internships").run(timeout=30)
+    monkeypatch.setattr(core.pack, "build_pack", lambda profile, job, others, llm=None, step=None: (copy.deepcopy(GOOD), []))
+    app.radio(key="page").set_value("Internships").run(timeout=30)
     by_label(app.text_input, "Company").input("Acme Malaysia")
     by_label(app.text_input, "Role (exact title)").input("Data Analyst Intern")
     by_label(app.text_area, "Paste the job description").input("SQL reporting.")

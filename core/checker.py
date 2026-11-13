@@ -7,6 +7,7 @@ and skills, and ID numbers. Sentence-level truth is checked by verify_pack.
 import json
 import re
 import unicodedata
+from difflib import SequenceMatcher
 
 MONTHS = "January February March April May June July August September October November December".split()
 ANY_DATE = re.compile(r"\b(?:(\d{1,2}) )?((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*) (20\d\d)\b")
@@ -107,3 +108,21 @@ def check_pack(pack: dict, profile: dict, job: dict, other_companies: list[str])
                     if allowed_weeks and {weeks[1], weeks[2] or weeks[1]} - allowed_weeks:
                         problems.append(f"{name} states a duration other than your window: {weeks[0]}")
     return problems
+
+
+def lines_to_check(pack: dict, profile: dict) -> set[str]:
+    """Lines a student should read against their profile: resume lines the AI reworded, and letter sentences that state a fact."""
+    originals = [normalize(profile.get("summary") or "")] + [
+        normalize(text) for section in ("experience", "projects", "leadership") for item in profile.get(section, []) for text in item.get("bullets", [])
+    ] + [normalize(value) for story in profile.get("stories", []) for value in story.values() if isinstance(value, str)]
+    resume = pack.get("resume", {})
+    flagged = set()
+    for line in [resume.get("summary", "")] + [b for section in ("experience", "projects", "leadership") for item in resume.get(section, []) for b in item.get("bullets", [])]:
+        if line and not any(SequenceMatcher(None, normalize(line), original).ratio() >= 0.9 for original in originals if original):
+            flagged.add(line)
+    terms = {term.strip() for group in profile.get("skills", []) for term in group.split(":", 1)[-1].split(",") if len(term.strip()) > 1}
+    for paragraph in pack.get("letter", []):
+        for sentence in re.split(r"(?<=[.!?])\s+", paragraph):
+            if re.search(r"\d", sentence) or any(contains(sentence, term) for term in terms):
+                flagged.add(sentence)
+    return flagged

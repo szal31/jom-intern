@@ -39,6 +39,17 @@ def sign_in(db, email: str, password: str):
     return db.auth.sign_in_with_password({"email": email, "password": password}).user
 
 
+def restore(db, refresh_token: str):
+    """Swap a remembered refresh token for a fresh session; returns the user."""
+    return db.auth.refresh_session(refresh_token).user
+
+
+def session_token(db) -> str | None:
+    """The current refresh token, which rotates whenever the session refreshes."""
+    session = db.auth.get_session()
+    return session.refresh_token if session else None
+
+
 def sign_out(db):
     db.auth.sign_out()
 

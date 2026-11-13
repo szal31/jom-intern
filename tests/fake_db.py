@@ -25,6 +25,8 @@ def install_fake_db(monkeypatch):
         "seats_left": lambda _db: 9,
         "sign_in": lambda _db, email, password: user,
         "sign_out": lambda _db: None,
+        "restore": lambda _db, token: user if token == "remembered-token" else (_ for _ in ()).throw(ValueError("Invalid Refresh Token")),
+        "session_token": lambda _db: "fresh-token",
         "load_profile": lambda _db, uid: store["profiles"].get(uid),
         "save_profile": lambda _db, uid, data, consent=False: store["profiles"].__setitem__(
             uid, {"data": data, "consent_at": "now" if consent else (store["profiles"].get(uid) or {}).get("consent_at")}),

@@ -27,6 +27,8 @@ def test_full_flow_with_fakes(monkeypatch):
 
     app.checkbox[0].check().run(timeout=30)
     by_label(app.button, "Continue").click().run(timeout=30)
+    assert app.title[0].value == "Set up your profile"
+    by_label(app.button, "Skip setup").click().run(timeout=30)
     assert app.title[0].value == "My profile"
 
     by_label(app.text_input, "Name").input("Test Student")
@@ -35,7 +37,7 @@ def test_full_flow_with_fakes(monkeypatch):
     by_label(app.button, "Save profile").click().run(timeout=30)
     assert store["profiles"]["u1"]["data"]["contact"]["name"] == "Test Student"
 
-    app.sidebar.radio[0].set_value("Internships").run(timeout=30)
+    app.radio(key="page").set_value("Internships").run(timeout=30)
     by_label(app.text_input, "Company").input("Acme Malaysia")
     by_label(app.text_input, "Role (exact title)").input("Data Analyst Intern")
     by_label(app.text_area, "Paste the job description").input("SQL and Power BI reporting.")
@@ -44,7 +46,7 @@ def test_full_flow_with_fakes(monkeypatch):
     assert len(store["packs"]) == 1
     assert store["files"]["u1/p0/resume.pdf"].startswith(b"%PDF")
 
-    app.sidebar.radio[0].set_value("Tracker").run(timeout=30)
+    app.radio(key="page").set_value("Tracker").run(timeout=30)
     assert not app.exception
     assert app.get("download_button")
 

@@ -3,7 +3,7 @@ import json
 import re
 
 from core.checker import check_pack
-from core.llm import ask_json
+from core.llm import LLMError, ask_json
 from core.profile import clean_items, clean_lines
 
 STYLE = (
@@ -83,15 +83,32 @@ def _drop(pack: dict, flagged: list[str]) -> tuple[dict, list[str]]:
     return pack, [targets[t] for t in targets if t not in found]
 
 
-def build_pack(profile: dict, job: dict, other_companies: list[str], llm=None) -> tuple[dict, list[str]]:
+def build_pack(profile: dict, job: dict, other_companies: list[str], llm=None, step=lambda message: None) -> tuple[dict, list[str]]:
+    """Write, verify and check, retrying once with the problems; `step` hears each stage for a progress display."""
     problems = None
-    for _attempt in range(2):
+    for attempt in range(2):
+        step("Writing your resume and letter" if attempt == 0 else "Fixing what the check found")
         pack = write_pack(profile, job, llm=llm, problems=problems)
+        step("Checking every line against your profile")
         pack, missed = _drop(pack, verify_pack(pack, profile, llm=llm))
         problems = check_pack(pack, profile, job, other_companies) + [f"A flagged line couldn't be removed: {m}" for m in missed]
         if not problems:
             return pack, []
     return pack, problems
+
+
+def rewrite_paragraph(paragraph: str, profile: dict, job: dict, how: str, llm=None) -> str:
+    """Rewrite one letter paragraph as the student asks, still only from their profile."""
+    prompt = (
+        "Rewrite this one cover letter paragraph. Use ONLY facts from the PROFILE. Never add employers, skills, numbers, "
+        f"dates or achievements.\n{STYLE}\nInstruction: {how.strip() or 'make it clearer and more specific to this job'}\n"
+        "Return JSON {\"paragraph\": str}.\n\n"
+        f"PARAGRAPH:\n{paragraph}\n\nPROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\nJOB:\n{json.dumps(job, ensure_ascii=False)}"
+    )
+    text = ask_json(prompt, llm=llm).get("paragraph")
+    if not isinstance(text, str) or not text.strip():
+        raise LLMError("The AI didn't return a paragraph. Please try again.")
+    return text.strip()
 
 
 def trim_to_one_page(pack: dict, page_count) -> dict:

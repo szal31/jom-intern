@@ -1,4 +1,5 @@
 """Word and PDF files for a pack. Plain one-column layout, no Word needed."""
+import html
 import io
 from datetime import date
 
@@ -135,3 +136,38 @@ def letter_pdf(profile: dict, job: dict, pack: dict) -> bytes:
     for line in _letter_lines(profile, job, pack):
         pdf.multi_cell(pdf.epw, 5.5, _latin(line), new_x="LMARGIN", new_y="NEXT")
     return bytes(pdf.output())
+
+
+def _mark(text: str, marked) -> str:
+    """Escape text and wrap each line to check in <mark>."""
+    safe = html.escape(text or "")
+    for line in sorted(marked, key=len, reverse=True):
+        escaped = html.escape(line)
+        if escaped and escaped in safe:
+            safe = safe.replace(escaped, f"<mark>{escaped}</mark>", 1)
+    return safe
+
+
+def resume_html(profile: dict, pack: dict, marked=frozenset()) -> str:
+    """An on-screen sheet of the resume, from the same blocks the PDF uses."""
+    parts = []
+    for kind, content in _resume_blocks(profile, pack):
+        if kind == "name":
+            parts.append(f"<h4>{html.escape(content)}</h4>")
+        elif kind == "contact":
+            parts.append(f'<p class="jom-sheet-contact">{html.escape(content)}</p>')
+        elif kind == "heading":
+            parts.append(f"<h5>{html.escape(content)}</h5>")
+        elif kind == "entry":
+            parts.append(f'<p class="jom-sheet-entry"><b>{html.escape(content[0])}</b><span>{html.escape(content[1])}</span></p>')
+        elif kind == "bullet":
+            parts.append(f'<p class="jom-sheet-bullet">{_mark(content, marked)}</p>')
+        elif content:
+            parts.append(f"<p>{_mark(content, marked)}</p>")
+    return f'<div class="jom-sheet">{"".join(parts)}</div>'
+
+
+def letter_html(profile: dict, job: dict, pack: dict, marked=frozenset()) -> str:
+    """An on-screen sheet of the cover letter."""
+    lines = "".join(f"<p>{_mark(line, marked)}</p>" if line else '<p class="jom-sheet-gap"></p>' for line in _letter_lines(profile, job, pack))
+    return f'<div class="jom-sheet jom-sheet-letter">{lines}</div>'
